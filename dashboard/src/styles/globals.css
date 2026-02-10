@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --emerald: #10b981;
+  --ghost-bg: #0a0a0a;
+  --ghost-card: #141414;
+  --ghost-border: #262626;
+}
+
+body {
+  @apply bg-ghost-bg text-white font-sans antialiased;
+}
+
+/* iMessage-style bubbles */
+.bubble-inbound {
+  @apply bg-ghost-card text-white rounded-2xl rounded-bl-md px-4 py-2 max-w-[80%];
+}
+
+.bubble-outbound {
+  @apply bg-emerald-600 text-white rounded-2xl rounded-br-md px-4 py-2 max-w-[80%];
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-ghost-bg;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-ghost-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-ghost-muted;
+}
+
+/* Stats card glow */
+.stat-card {
+  @apply relative overflow-hidden;
+}
+
+.stat-card::before {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 transition-opacity;
+}
+
+.stat-card:hover::before {
+  @apply opacity-100;
+}

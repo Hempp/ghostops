@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-ghost-bg text-white font-sans antialiased;
+}
+
+.gradient-text {
+  @apply bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 bg-clip-text text-transparent;
+}
+
+.gradient-border {
+  position: relative;
+  background: #141414;
+  border-radius: 1rem;
+}
+
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  padding: 1px;
+  background: linear-gradient(135deg, #10b981, #0d9488, #10b981);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.glow {
+  box-shadow: 0 0 60px rgba(16, 185, 129, 0.3);
+}
+
+.phone-mockup {
+  background: linear-gradient(145deg, #1a1a1a, #0d0d0d);
+  border: 3px solid #333;
+  border-radius: 2.5rem;
+  padding: 0.5rem;
+}
+
+.sms-bubble-in {
+  @apply bg-[#1c1c1e] text-white rounded-2xl rounded-bl-md px-4 py-2;
+}
+
+.sms-bubble-out {
+  @apply bg-emerald-600 text-white rounded-2xl rounded-br-md px-4 py-2;
+}
+
+@keyframes typing {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.typing-dot {
+  animation: typing 1.4s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
