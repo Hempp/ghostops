@@ -2,19 +2,141 @@
 
 import { useEffect, useState } from 'react'
 import { Users, MessageSquare, DollarSign, Phone, Clock, TrendingUp } from 'lucide-react'
+import { getStats, getInvoices, subscribeToStats, type DailyStats, type Invoice } from '@/lib/supabase'
 
 interface StatsOverviewProps {
   businessId: string
 }
 
+interface AggregatedStats {
+  newLeads: number
+  messagesSent: number
+  messagesReceived: number
+  missedCalls: number
+  revenueToday: number
+  unpaidInvoices: number
+  unpaidAmount: number
+}
+
 export default function StatsOverview({ businessId }: StatsOverviewProps) {
+  const [stats, setStats] = useState<AggregatedStats | null>(null)
+  const [recentStats, setRecentStats] = useState<DailyStats[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const [dailyStats, invoices] = await Promise.all([
+          getStats(businessId, 7),
+          getInvoices(businessId)
+        ])
+
+        setRecentStats(dailyStats)
+
+        // Get today's stats
+        const today = new Date().toISOString().split('T')[0]
+        const todayStats = dailyStats.find(s => s.date === today)
+
+        // Calculate unpaid invoices
+        const unpaid = invoices.filter(i => i.status !== 'paid')
+        const unpaidTotal = unpaid.reduce((sum, inv) => sum + inv.amount_cents, 0)
+
+        // Aggregate last 7 days
+        const aggregated: AggregatedStats = {
+          newLeads: todayStats?.new_leads || 0,
+          messagesSent: todayStats?.messages_sent || 0,
+          messagesReceived: todayStats?.messages_received || 0,
+          missedCalls: todayStats?.missed_calls || 0,
+          revenueToday: todayStats?.revenue_cents || 0,
+          unpaidInvoices: unpaid.length,
+          unpaidAmount: unpaidTotal
+        }
+
+        setStats(aggregated)
+      } catch (err) {
+        console.error('Error loading stats:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadStats()
+
+    // Subscribe to real-time updates
+    const subscription = subscribeToStats(businessId, () => {
+      loadStats() // Reload all stats when changes occur
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [businessId])
+
+  // Calculate week over week change
+  const calculateChange = () => {
+    if (recentStats.length < 2) return null
+    const thisWeek = recentStats.slice(0, 3).reduce((sum, s) => sum + s.new_leads, 0)
+    const lastWeek = recentStats.slice(3, 6).reduce((sum, s) => sum + s.new_leads, 0)
+    if (lastWeek === 0) return thisWeek > 0 ? '+100%' : null
+    const change = ((thisWeek - lastWeek) / lastWeek * 100).toFixed(0)
+    return Number(change) >= 0 ? `+${change}%` : `${change}%`
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-ghost-muted">Loading stats...</div>
+      </div>
+    )
+  }
+
   const statCards = [
-    { label: 'New Leads', value: '4', change: '+25%', icon: Users, bg: 'bg-emerald-600/20', text: 'text-emerald-400' },
-    { label: 'Messages', value: '83', subtext: 'AI handled', icon: MessageSquare, bg: 'bg-blue-600/20', text: 'text-blue-400' },
-    { label: 'Revenue Today', value: '$3,200', icon: DollarSign, bg: 'bg-green-600/20', text: 'text-green-400' },
-    { label: 'Missed Calls', value: '3', subtext: 'Recovered', icon: Phone, bg: 'bg-orange-600/20', text: 'text-orange-400' },
-    { label: 'Unpaid', value: '2', subtext: '$1,250 total', icon: Clock, bg: 'bg-red-600/20', text: 'text-red-400' },
-    { label: 'Response Time', value: '< 60s', icon: TrendingUp, bg: 'bg-purple-600/20', text: 'text-purple-400' },
+    {
+      label: 'New Leads',
+      value: String(stats?.newLeads || 0),
+      change: calculateChange(),
+      icon: Users,
+      bg: 'bg-emerald-600/20',
+      text: 'text-emerald-400'
+    },
+    {
+      label: 'Messages',
+      value: String((stats?.messagesSent || 0) + (stats?.messagesReceived || 0)),
+      subtext: 'AI handled',
+      icon: MessageSquare,
+      bg: 'bg-blue-600/20',
+      text: 'text-blue-400'
+    },
+    {
+      label: 'Revenue Today',
+      value: '$' + ((stats?.revenueToday || 0) / 100).toLocaleString(),
+      icon: DollarSign,
+      bg: 'bg-green-600/20',
+      text: 'text-green-400'
+    },
+    {
+      label: 'Missed Calls',
+      value: String(stats?.missedCalls || 0),
+      subtext: 'Recovered',
+      icon: Phone,
+      bg: 'bg-orange-600/20',
+      text: 'text-orange-400'
+    },
+    {
+      label: 'Unpaid',
+      value: String(stats?.unpaidInvoices || 0),
+      subtext: '$' + ((stats?.unpaidAmount || 0) / 100).toLocaleString() + ' total',
+      icon: Clock,
+      bg: 'bg-red-600/20',
+      text: 'text-red-400'
+    },
+    {
+      label: 'Response Time',
+      value: '< 60s',
+      icon: TrendingUp,
+      bg: 'bg-purple-600/20',
+      text: 'text-purple-400'
+    },
   ]
 
   return (
@@ -37,25 +159,31 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
           )
         })}
       </div>
-      
-      <div className="bg-ghost-card border border-ghost-border rounded-2xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Recent Activity</h2>
-        <div className="space-y-3">
-          {[
-            { time: '2 min ago', text: 'AI responded to lead from Facebook', dot: 'bg-emerald-500' },
-            { time: '5 min ago', text: 'Invoice #1234 marked as paid ($450)', dot: 'bg-green-500' },
-            { time: '12 min ago', text: 'Missed call recovered - appointment booked', dot: 'bg-orange-500' },
-            { time: '18 min ago', text: 'Review request sent to John D.', dot: 'bg-yellow-500' },
-            { time: '25 min ago', text: 'Social post published to Instagram', dot: 'bg-purple-500' },
-          ].map((activity, i) => (
-            <div key={i} className="flex items-center gap-4 py-2">
-              <div className={"w-2 h-2 rounded-full " + activity.dot} />
-              <span className="text-white flex-1">{activity.text}</span>
-              <span className="text-ghost-muted text-sm">{activity.time}</span>
-            </div>
-          ))}
+
+      {/* Recent stats chart placeholder - shows last 7 days */}
+      {recentStats.length > 0 && (
+        <div className="bg-ghost-card border border-ghost-border rounded-2xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Last 7 Days</h2>
+          <div className="grid grid-cols-7 gap-2">
+            {recentStats.slice(0, 7).reverse().map((day, i) => (
+              <div key={i} className="text-center">
+                <div className="text-xs text-ghost-muted mb-2">
+                  {new Date(day.date).toLocaleDateString('en', { weekday: 'short' })}
+                </div>
+                <div className="h-20 bg-ghost-border rounded flex flex-col justify-end p-1">
+                  <div
+                    className="bg-emerald-500 rounded transition-all"
+                    style={{ height: `${Math.min(100, (day.messages_sent + day.messages_received) * 2)}%` }}
+                  />
+                </div>
+                <div className="text-xs text-ghost-muted mt-1">
+                  {day.messages_sent + day.messages_received}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

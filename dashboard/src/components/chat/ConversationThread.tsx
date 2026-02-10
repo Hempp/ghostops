@@ -1,15 +1,8 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Send, Bot } from 'lucide-react'
-
-interface Message {
-  id: string
-  content: string
-  direction: 'inbound' | 'outbound'
-  ai_generated: boolean
-  created_at: string
-}
+import { Send, Bot, User } from 'lucide-react'
+import { getMessages, subscribeToMessages, type Message } from '@/lib/supabase'
 
 interface ConversationThreadProps {
   conversationId: string | null
@@ -18,27 +11,45 @@ interface ConversationThreadProps {
 
 export default function ConversationThread({ conversationId, businessId }: ConversationThreadProps) {
   const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState('')
+  const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  
+
   useEffect(() => {
-    if (!conversationId) return
-    
-    // Demo data
-    setMessages([
-      { id: '1', content: 'Hi, I saw your ad on Google. Do you do kitchen renovations?', direction: 'inbound', ai_generated: false, created_at: new Date(Date.now() - 600000).toISOString() },
-      { id: '2', content: 'Hi there! Yes, we specialize in kitchen renovations. What kind of project are you looking at?', direction: 'outbound', ai_generated: true, created_at: new Date(Date.now() - 540000).toISOString() },
-      { id: '3', content: 'Complete remodel. New cabinets, countertops, backsplash', direction: 'inbound', ai_generated: false, created_at: new Date(Date.now() - 480000).toISOString() },
-      { id: '4', content: 'Sounds great! We can definitely help with a full kitchen remodel. Would you like to schedule a free estimate? We have availability this week.', direction: 'outbound', ai_generated: true, created_at: new Date(Date.now() - 420000).toISOString() },
-      { id: '5', content: 'Yes, I can come in tomorrow at 2pm', direction: 'inbound', ai_generated: false, created_at: new Date(Date.now() - 360000).toISOString() },
-      { id: '6', content: 'Perfect! I have you down for tomorrow at 2pm for a kitchen remodel estimate. We will send you a confirmation shortly. See you then!', direction: 'outbound', ai_generated: true, created_at: new Date(Date.now() - 300000).toISOString() },
-    ])
+    if (!conversationId) {
+      setMessages([])
+      return
+    }
+
+    // Fetch messages for this conversation
+    async function load() {
+      if (!conversationId) return
+      setLoading(true)
+      try {
+        const data = await getMessages(conversationId)
+        setMessages(data)
+      } catch (err) {
+        console.error('Error loading messages:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+
+    // Subscribe to new messages in real-time
+    const subscription = subscribeToMessages(conversationId, (newMessage) => {
+      setMessages(prev => [...prev, newMessage])
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [conversationId])
-  
+
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-  
+
   if (!conversationId) {
     return (
       <div className="flex-1 flex items-center justify-center bg-ghost-bg">
@@ -52,52 +63,73 @@ export default function ConversationThread({ conversationId, businessId }: Conve
     )
   }
 
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-ghost-bg">
+        <div className="text-ghost-muted">Loading messages...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col bg-ghost-bg">
       {/* Header */}
       <div className="p-4 border-b border-ghost-border bg-ghost-card">
-        <h3 className="font-medium text-white">John Smith</h3>
-        <p className="text-sm text-ghost-muted">+1 (555) 123-4567</p>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+          <span className="text-emerald-400 text-sm">Live - AI Agent Active</span>
+        </div>
       </div>
-      
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={
-              "flex " + (msg.direction === 'outbound' ? "justify-end" : "justify-start")
-            }
-          >
-            <div className={
-              msg.direction === 'outbound' ? "bubble-outbound" : "bubble-inbound"
-            }>
-              <p>{msg.content}</p>
-              {msg.ai_generated && (
-                <div className="flex items-center gap-1 mt-1 opacity-60">
-                  <Bot className="w-3 h-3" />
-                  <span className="text-xs">AI</span>
-                </div>
-              )}
-            </div>
+        {messages.length === 0 ? (
+          <div className="text-center text-ghost-muted py-8">
+            No messages in this conversation yet.
           </div>
-        ))}
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={"flex " + (msg.direction === 'outbound' ? "justify-end" : "justify-start")}
+            >
+              <div className="flex items-end gap-2 max-w-[80%]">
+                {msg.direction === 'inbound' && (
+                  <div className="w-6 h-6 bg-ghost-border rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="w-3 h-3 text-ghost-muted" />
+                  </div>
+                )}
+                <div className={msg.direction === 'outbound' ? "bubble-outbound" : "bubble-inbound"}>
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <div className="flex items-center gap-2 mt-1 opacity-60">
+                    {msg.ai_generated && (
+                      <div className="flex items-center gap-1">
+                        <Bot className="w-3 h-3" />
+                        <span className="text-xs">AI</span>
+                      </div>
+                    )}
+                    <span className="text-xs">
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+                {msg.direction === 'outbound' && msg.ai_generated && (
+                  <div className="w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-3 h-3 text-white" />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
-      
-      {/* Input */}
+
+      {/* Footer - Read Only */}
       <div className="p-4 border-t border-ghost-border bg-ghost-card">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-ghost-bg border border-ghost-border rounded-xl px-4 py-3 text-white placeholder-ghost-muted focus:outline-none focus:border-emerald-600"
-          />
-          <button className="bg-emerald-600 text-white px-4 py-3 rounded-xl hover:bg-emerald-700 transition-colors">
-            <Send className="w-5 h-5" />
-          </button>
+        <div className="flex items-center justify-center gap-2 text-ghost-muted text-sm">
+          <Bot className="w-4 h-4 text-emerald-400" />
+          <span>AI Agent is handling this conversation via SMS</span>
         </div>
       </div>
     </div>
