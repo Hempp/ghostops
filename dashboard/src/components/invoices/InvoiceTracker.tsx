@@ -17,8 +17,8 @@ export default function InvoiceTracker({ businessId }: { businessId: string }) {
     ])
   }, [businessId])
   
-  const filtered = invoices.filter(inv => filter === 'all' ? true : filter === 'unpaid' ? inv.status \!== 'paid' : inv.status === 'paid')
-  const totalUnpaid = invoices.filter(i => i.status \!== 'paid').reduce((s, i) => s + i.amount_cents, 0)
+  const filtered = invoices.filter(inv => filter === 'all' ? true : filter === 'unpaid' ? inv.status !== 'paid' : inv.status === 'paid')
+  const totalUnpaid = invoices.filter(i => i.status !== 'paid').reduce((s, i) => s + i.amount_cents, 0)
   const totalPaid = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount_cents, 0)
   
   return (
