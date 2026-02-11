@@ -5,12 +5,35 @@ import {
   Ghost, Phone, MessageSquare, DollarSign, Star, Calendar,
   Zap, Clock, TrendingUp, CheckCircle, ArrowRight, Menu, X,
   Instagram, Facebook, Mail, PhoneCall, Send, Bot, Sparkles,
-  Linkedin, Youtube, Sun, Image, BarChart3
+  Linkedin, Youtube, Sun, Image, BarChart3, Loader2
 } from 'lucide-react'
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [email, setEmail] = useState('')
+  const [loading, setLoading] = useState<string | null>(null)
+
+  const handleCheckout = async (plan: 'starter' | 'pro' | 'agency') => {
+    setLoading(plan)
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      })
+      const data = await response.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        alert('Failed to start checkout. Please try again.')
+        setLoading(null)
+      }
+    } catch (error) {
+      console.error('Checkout error:', error)
+      alert('Failed to start checkout. Please try again.')
+      setLoading(null)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-ghost-bg">
@@ -30,7 +53,10 @@ export default function LandingPage() {
               <a href="#how-it-works" className="text-ghost-muted hover:text-white transition">How It Works</a>
               <a href="#pricing" className="text-ghost-muted hover:text-white transition">Pricing</a>
               <a href="#faq" className="text-ghost-muted hover:text-white transition">FAQ</a>
-              <button className="bg-emerald-600 text-white px-6 py-2.5 rounded-full font-medium hover:bg-emerald-500 transition">
+              <button
+                onClick={() => handleCheckout('pro')}
+                className="bg-emerald-600 text-white px-6 py-2.5 rounded-full font-medium hover:bg-emerald-500 transition"
+              >
                 Get Started
               </button>
             </div>
@@ -67,10 +93,16 @@ export default function LandingPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-12">
-                <button className="bg-emerald-600 text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2 glow">
+                <button
+                  onClick={() => handleCheckout('pro')}
+                  className="bg-emerald-600 text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2 glow"
+                >
                   Start Free Trial <ArrowRight className="w-5 h-5" />
                 </button>
-                <button className="border border-ghost-border text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-ghost-card transition">
+                <button
+                  onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="border border-ghost-border text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-ghost-card transition"
+                >
                   See It In Action
                 </button>
               </div>
@@ -415,23 +447,23 @@ export default function LandingPage() {
             {[
               {
                 step: '01',
-                title: 'Text Your Number',
-                description: 'We give you a dedicated phone number. Text it to start setup.'
+                title: 'Sign Up',
+                description: 'Enter your phone number and payment. Takes 60 seconds.'
               },
               {
                 step: '02',
-                title: 'Answer 3 Questions',
-                description: 'Business name, email, industry. All via text. Takes 30 seconds.'
+                title: 'Get Your Number',
+                description: 'We instantly text you your new AI business number.'
               },
               {
                 step: '03',
-                title: 'Connect Google',
-                description: 'One tap to link your calendar and email. Optional but powerful.'
+                title: 'Save & Text',
+                description: 'Save it as "GhostOps AI" and start texting commands.'
               },
               {
                 step: '04',
-                title: 'You\'re Live',
-                description: 'AI starts working immediately. Text commands anytime.'
+                title: 'AI Works 24/7',
+                description: 'Handle customers, invoices, calendar, social — all via text.'
               },
             ].map((item, i) => (
               <div key={i} className="text-center">
@@ -444,31 +476,31 @@ export default function LandingPage() {
 
           {/* Example Onboarding */}
           <div className="mt-16 max-w-md mx-auto bg-ghost-card border border-ghost-border rounded-2xl p-6">
-            <div className="text-center text-ghost-muted text-sm mb-4">Example setup conversation</div>
+            <div className="text-center text-ghost-muted text-sm mb-4">What happens after signup</div>
             <div className="space-y-3">
               <div className="flex justify-start">
                 <div className="sms-bubble-in max-w-[85%]">
-                  <p className="text-sm">Hey! I&apos;m your GhostOps AI. What&apos;s your business name?</p>
+                  <p className="text-sm">Welcome to GhostOps! Your AI assistant number is: +1 (555) 123-4567<br/><br/>Save this number and text it anytime!</p>
                 </div>
               </div>
               <div className="flex justify-end">
                 <div className="sms-bubble-out max-w-[80%]">
-                  <p className="text-sm">Chen&apos;s Home Remodeling</p>
+                  <p className="text-sm">what&apos;s my day look like</p>
                 </div>
               </div>
               <div className="flex justify-start">
                 <div className="sms-bubble-in max-w-[85%]">
-                  <p className="text-sm">Got it! Tap here to connect Google Calendar: [link]</p>
+                  <p className="text-sm">You have 3 appointments today:<br/>9AM - Johnson kitchen estimate<br/>1PM - Smith bathroom install<br/>4PM - Call with Mike<br/><br/>2 unpaid invoices ($1,200)</p>
                 </div>
               </div>
               <div className="flex justify-end">
                 <div className="sms-bubble-out max-w-[80%]">
-                  <p className="text-sm">done</p>
+                  <p className="text-sm">remind them to pay</p>
                 </div>
               </div>
               <div className="flex justify-start">
                 <div className="sms-bubble-in max-w-[85%]">
-                  <p className="text-sm">You&apos;re live! I&apos;m working for you 24/7 now. Text me anytime like you&apos;d text an employee. 👻</p>
+                  <p className="text-sm">Done! Sent friendly payment reminders to Sarah Chen ($750) and Mike Johnson ($450).</p>
                 </div>
               </div>
             </div>
@@ -505,7 +537,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button className="w-full border border-ghost-border text-white py-3 rounded-full font-medium hover:bg-ghost-border transition">
+              <button
+                onClick={() => handleCheckout('starter')}
+                disabled={loading === 'starter'}
+                className="w-full border border-ghost-border text-white py-3 rounded-full font-medium hover:bg-ghost-border transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading === 'starter' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
                 Start Free Trial
               </button>
             </div>
@@ -533,7 +570,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button className="w-full bg-emerald-600 text-white py-3 rounded-full font-medium hover:bg-emerald-500 transition">
+              <button
+                onClick={() => handleCheckout('pro')}
+                disabled={loading === 'pro'}
+                className="w-full bg-emerald-600 text-white py-3 rounded-full font-medium hover:bg-emerald-500 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading === 'pro' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
                 Start Free Trial
               </button>
             </div>
@@ -557,8 +599,13 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <button className="w-full border border-ghost-border text-white py-3 rounded-full font-medium hover:bg-ghost-border transition">
-                Contact Sales
+              <button
+                onClick={() => handleCheckout('agency')}
+                disabled={loading === 'agency'}
+                className="w-full border border-ghost-border text-white py-3 rounded-full font-medium hover:bg-ghost-border transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading === 'agency' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                Start Free Trial
               </button>
             </div>
           </div>
