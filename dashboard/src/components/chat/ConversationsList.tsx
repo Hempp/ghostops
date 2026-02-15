@@ -13,10 +13,13 @@ interface ConversationsListProps {
   onSelect: (id: string) => void
 }
 
+type StatusFilter = 'all' | 'active' | 'paused' | 'closed'
+
 export default function ConversationsList({ businessId, selectedId, onSelect }: ConversationsListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   useEffect(() => {
     // Fetch initial conversations
@@ -56,14 +59,29 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
     }
   }, [businessId])
 
-  // Filter conversations by search query
+  // Filter conversations by search query and status
   const filteredConversations = conversations.filter(conv => {
-    if (!searchQuery.trim()) return true
-    const query = searchQuery.toLowerCase()
-    const name = conv.contacts?.name?.toLowerCase() || ''
-    const phone = conv.phone?.toLowerCase() || ''
-    return name.includes(query) || phone.includes(query)
+    // Apply status filter
+    if (statusFilter !== 'all' && conv.status !== statusFilter) return false
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      const name = conv.contacts?.name?.toLowerCase() || ''
+      const phone = conv.phone?.toLowerCase() || ''
+      return name.includes(query) || phone.includes(query)
+    }
+
+    return true
   })
+
+  // Count by status for filter badges
+  const statusCounts = {
+    all: conversations.length,
+    active: conversations.filter(c => c.status === 'active').length,
+    paused: conversations.filter(c => c.status === 'paused').length,
+    closed: conversations.filter(c => c.status === 'closed').length,
+  }
 
   if (loading) {
     return (
@@ -97,6 +115,30 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-ghost-bg border border-ghost-border rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-ghost-muted focus:outline-none focus:border-emerald-500 transition-colors"
           />
+        </div>
+
+        {/* Status Filter */}
+        <div className="flex gap-1 mt-3">
+          {(['all', 'active', 'paused'] as StatusFilter[]).map((status) => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+                statusFilter === status
+                  ? status === 'active'
+                    ? 'bg-emerald-600/20 text-emerald-400'
+                    : status === 'paused'
+                    ? 'bg-orange-600/20 text-orange-400'
+                    : 'bg-ghost-border text-white'
+                  : 'text-ghost-muted hover:bg-ghost-border/50'
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+              {statusCounts[status] > 0 && (
+                <span className="ml-1 opacity-70">({statusCounts[status]})</span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 

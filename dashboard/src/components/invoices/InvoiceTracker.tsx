@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DollarSign, Clock, CheckCircle, AlertTriangle, Send, Eye, ExternalLink } from 'lucide-react'
+import { DollarSign, Clock, CheckCircle, AlertTriangle, Send, Eye, ExternalLink, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { getInvoices, subscribeToInvoices, type Invoice } from '@/lib/supabase'
 import { StatCardSkeleton, InvoiceRowSkeleton } from '@/components/ui/Skeleton'
@@ -13,6 +13,7 @@ interface InvoiceTrackerProps {
 export default function InvoiceTracker({ businessId }: InvoiceTrackerProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [filter, setFilter] = useState<'all' | 'unpaid' | 'paid'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -53,9 +54,20 @@ export default function InvoiceTracker({ businessId }: InvoiceTrackerProps) {
   }, [businessId])
 
   const filtered = invoices.filter(inv => {
-    if (filter === 'all') return true
-    if (filter === 'unpaid') return inv.status !== 'paid'
-    return inv.status === 'paid'
+    // Apply status filter
+    if (filter === 'unpaid' && inv.status === 'paid') return false
+    if (filter === 'paid' && inv.status !== 'paid') return false
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      const name = inv.contact_name?.toLowerCase() || ''
+      const phone = inv.contact_phone?.toLowerCase() || ''
+      const description = inv.description?.toLowerCase() || ''
+      return name.includes(query) || phone.includes(query) || description.includes(query)
+    }
+
+    return true
   })
 
   const totalUnpaid = invoices
@@ -161,29 +173,46 @@ export default function InvoiceTracker({ businessId }: InvoiceTrackerProps) {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {(['all', 'unpaid', 'paid'] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={
-              "px-4 py-2 rounded-lg text-sm font-medium transition-colors " +
-              (filter === f
-                ? "bg-emerald-600 text-white"
-                : "bg-ghost-card text-ghost-muted hover:bg-ghost-border")
-            }
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      {/* Filter and Search */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        {/* Filter Tabs */}
+        <div className="flex gap-2">
+          {(['all', 'unpaid', 'paid'] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors " +
+                (filter === f
+                  ? "bg-emerald-600 text-white"
+                  : "bg-ghost-card text-ghost-muted hover:bg-ghost-border")
+              }
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ghost-muted" />
+          <input
+            type="text"
+            placeholder="Search invoices..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-ghost-card border border-ghost-border rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-ghost-muted focus:outline-none focus:border-emerald-500 transition-colors"
+          />
+        </div>
       </div>
 
       {/* Invoices Table */}
       <div className="bg-ghost-card border border-ghost-border rounded-2xl overflow-hidden">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-ghost-muted">
-            No invoices found. Invoices created via SMS will appear here.
+            {searchQuery
+              ? `No invoices matching "${searchQuery}"`
+              : 'No invoices found. Invoices created via SMS will appear here.'}
           </div>
         ) : (
           <table className="w-full">

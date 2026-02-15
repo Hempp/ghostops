@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, MessageSquare, DollarSign, Phone, Clock, TrendingUp } from 'lucide-react'
+import { Users, MessageSquare, DollarSign, Phone, Clock, TrendingUp, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { getStats, getInvoices, subscribeToStats, type DailyStats, type Invoice } from '@/lib/supabase'
 import { StatCardSkeleton } from '@/components/ui/Skeleton'
+import Tooltip from '@/components/ui/Tooltip'
 
 interface StatsOverviewProps {
   businessId: string
@@ -110,7 +111,8 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
       change: calculateChange(),
       icon: Users,
       bg: 'bg-emerald-600/20',
-      text: 'text-emerald-400'
+      text: 'text-emerald-400',
+      tooltip: 'New contacts who messaged you today'
     },
     {
       label: 'Messages',
@@ -118,14 +120,16 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
       subtext: 'AI handled',
       icon: MessageSquare,
       bg: 'bg-blue-600/20',
-      text: 'text-blue-400'
+      text: 'text-blue-400',
+      tooltip: 'Total SMS messages sent and received today'
     },
     {
       label: 'Revenue Today',
       value: '$' + ((stats?.revenueToday || 0) / 100).toLocaleString(),
       icon: DollarSign,
       bg: 'bg-green-600/20',
-      text: 'text-green-400'
+      text: 'text-green-400',
+      tooltip: 'Invoices paid today'
     },
     {
       label: 'Missed Calls',
@@ -133,7 +137,8 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
       subtext: 'Recovered',
       icon: Phone,
       bg: 'bg-orange-600/20',
-      text: 'text-orange-400'
+      text: 'text-orange-400',
+      tooltip: 'Calls that went to voicemail - AI sent follow-up SMS'
     },
     {
       label: 'Unpaid',
@@ -141,14 +146,16 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
       subtext: '$' + ((stats?.unpaidAmount || 0) / 100).toLocaleString() + ' total',
       icon: Clock,
       bg: 'bg-red-600/20',
-      text: 'text-red-400'
+      text: 'text-red-400',
+      tooltip: 'Outstanding invoices awaiting payment'
     },
     {
       label: 'Response Time',
       value: '< 60s',
       icon: TrendingUp,
       bg: 'bg-purple-600/20',
-      text: 'text-purple-400'
+      text: 'text-purple-400',
+      tooltip: 'Average AI response time to customer messages'
     },
   ]
 
@@ -163,7 +170,12 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
                 <div className={"w-12 h-12 rounded-xl flex items-center justify-center " + stat.bg + " " + stat.text}>
                   <Icon className="w-6 h-6" />
                 </div>
-                {stat.change && <span className="text-sm font-medium text-emerald-400">{stat.change}</span>}
+                <div className="flex items-center gap-2">
+                  {stat.change && <span className="text-sm font-medium text-emerald-400">{stat.change}</span>}
+                  <Tooltip content={stat.tooltip} position="left">
+                    <Info className="w-4 h-4 text-ghost-muted hover:text-white cursor-help transition-colors" />
+                  </Tooltip>
+                </div>
               </div>
               <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
               <div className="text-sm text-ghost-muted">{stat.label}</div>

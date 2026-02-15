@@ -143,6 +143,53 @@ export async function getSocialPosts(businessId: string) {
   return data as SocialPost[]
 }
 
+// Mutation functions
+export async function sendManualMessage(
+  conversationId: string,
+  businessId: string,
+  content: string
+) {
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      business_id: businessId,
+      direction: 'outbound',
+      content,
+      message_type: 'text',
+      ai_generated: false,
+      media_urls: []
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as Message
+}
+
+export async function updateConversationStatus(
+  conversationId: string,
+  status: 'active' | 'paused' | 'closed'
+) {
+  const { error } = await supabase
+    .from('conversations')
+    .update({ status })
+    .eq('id', conversationId)
+
+  if (error) throw error
+}
+
+export async function getConversation(conversationId: string) {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*, contacts(*)')
+    .eq('id', conversationId)
+    .single()
+
+  if (error) throw error
+  return data as Conversation
+}
+
 // Real-time subscriptions
 export function subscribeToMessages(conversationId: string, callback: (message: Message) => void) {
   return supabase
