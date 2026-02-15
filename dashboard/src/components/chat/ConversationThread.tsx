@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { Send, Bot, User } from 'lucide-react'
+import { toast } from 'sonner'
 import { getMessages, subscribeToMessages, type Message } from '@/lib/supabase'
+import { MessageSkeleton } from '@/components/ui/Skeleton'
 
 interface ConversationThreadProps {
   conversationId: string | null
@@ -29,6 +31,9 @@ export default function ConversationThread({ conversationId, businessId }: Conve
         setMessages(data)
       } catch (err) {
         console.error('Error loading messages:', err)
+        toast.error('Failed to load messages', {
+          description: 'Check your connection and try again',
+        })
       } finally {
         setLoading(false)
       }
@@ -38,6 +43,12 @@ export default function ConversationThread({ conversationId, businessId }: Conve
     // Subscribe to new messages in real-time
     const subscription = subscribeToMessages(conversationId, (newMessage) => {
       setMessages(prev => [...prev, newMessage])
+      // Show toast for new incoming messages
+      if (newMessage.direction === 'inbound') {
+        toast('New message received', {
+          description: newMessage.content.slice(0, 50) + (newMessage.content.length > 50 ? '...' : ''),
+        })
+      }
     })
 
     return () => {
@@ -65,8 +76,20 @@ export default function ConversationThread({ conversationId, businessId }: Conve
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-ghost-bg">
-        <div className="text-ghost-muted">Loading messages...</div>
+      <div className="flex-1 flex flex-col bg-ghost-bg">
+        <div className="p-4 border-b border-ghost-border bg-ghost-card">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-emerald-400 text-sm">Loading...</span>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <MessageSkeleton />
+          <MessageSkeleton outbound />
+          <MessageSkeleton />
+          <MessageSkeleton outbound />
+          <MessageSkeleton />
+        </div>
       </div>
     )
   }

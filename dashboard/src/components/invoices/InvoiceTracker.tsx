@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { DollarSign, Clock, CheckCircle, AlertTriangle, Send, Eye, ExternalLink } from 'lucide-react'
+import { toast } from 'sonner'
 import { getInvoices, subscribeToInvoices, type Invoice } from '@/lib/supabase'
+import { StatCardSkeleton, InvoiceRowSkeleton } from '@/components/ui/Skeleton'
 
 interface InvoiceTrackerProps {
   businessId: string
@@ -20,6 +22,13 @@ export default function InvoiceTracker({ businessId }: InvoiceTrackerProps) {
         setInvoices(data)
       } catch (err) {
         console.error('Error loading invoices:', err)
+        toast.error('Failed to load invoices', {
+          description: 'Check your connection and try again',
+          action: {
+            label: 'Retry',
+            onClick: () => load()
+          }
+        })
       } finally {
         setLoading(false)
       }
@@ -82,8 +91,30 @@ export default function InvoiceTracker({ businessId }: InvoiceTrackerProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-ghost-muted">Loading invoices...</div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
+        <div className="bg-ghost-card border border-ghost-border rounded-2xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-ghost-border">
+                <th className="text-left p-4 text-ghost-muted font-medium">Customer</th>
+                <th className="text-left p-4 text-ghost-muted font-medium">Description</th>
+                <th className="text-left p-4 text-ghost-muted font-medium">Amount</th>
+                <th className="text-left p-4 text-ghost-muted font-medium">Status</th>
+                <th className="text-left p-4 text-ghost-muted font-medium">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...Array(5)].map((_, i) => (
+                <InvoiceRowSkeleton key={i} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     )
   }

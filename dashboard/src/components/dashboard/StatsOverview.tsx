@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Users, MessageSquare, DollarSign, Phone, Clock, TrendingUp } from 'lucide-react'
+import { toast } from 'sonner'
 import { getStats, getInvoices, subscribeToStats, type DailyStats, type Invoice } from '@/lib/supabase'
+import { StatCardSkeleton } from '@/components/ui/Skeleton'
 
 interface StatsOverviewProps {
   businessId: string
@@ -55,6 +57,13 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
         setStats(aggregated)
       } catch (err) {
         console.error('Error loading stats:', err)
+        toast.error('Failed to load stats', {
+          description: 'Check your connection and try again',
+          action: {
+            label: 'Retry',
+            onClick: () => loadStats()
+          }
+        })
       } finally {
         setLoading(false)
       }
@@ -84,8 +93,12 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-ghost-muted">Loading stats...</div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     )
   }

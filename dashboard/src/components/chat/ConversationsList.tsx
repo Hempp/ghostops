@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
+import { Search } from 'lucide-react'
+import { toast } from 'sonner'
 import { supabase, getConversations, subscribeToConversations, type Conversation } from '@/lib/supabase'
+import { ConversationItemSkeleton } from '@/components/ui/Skeleton'
 
 interface ConversationsListProps {
   businessId: string
@@ -13,6 +16,7 @@ interface ConversationsListProps {
 export default function ConversationsList({ businessId, selectedId, onSelect }: ConversationsListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     // Fetch initial conversations
@@ -22,6 +26,13 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
         setConversations(data)
       } catch (err) {
         console.error('Error loading conversations:', err)
+        toast.error('Failed to load conversations', {
+          description: 'Check your connection and try again',
+          action: {
+            label: 'Retry',
+            onClick: () => load()
+          }
+        })
       } finally {
         setLoading(false)
       }
@@ -45,10 +56,27 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
     }
   }, [businessId])
 
+  // Filter conversations by search query
+  const filteredConversations = conversations.filter(conv => {
+    if (!searchQuery.trim()) return true
+    const query = searchQuery.toLowerCase()
+    const name = conv.contacts?.name?.toLowerCase() || ''
+    const phone = conv.phone?.toLowerCase() || ''
+    return name.includes(query) || phone.includes(query)
+  })
+
   if (loading) {
     return (
-      <div className="w-80 border-r border-ghost-border h-full flex items-center justify-center">
-        <div className="text-ghost-muted">Loading conversations...</div>
+      <div className="w-80 border-r border-ghost-border h-full flex flex-col">
+        <div className="p-4 border-b border-ghost-border">
+          <h2 className="text-lg font-semibold text-white">Messages</h2>
+          <p className="text-sm text-ghost-muted">Loading...</p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {[...Array(5)].map((_, i) => (
+            <ConversationItemSkeleton key={i} />
+          ))}
+        </div>
       </div>
     )
   }
@@ -58,15 +86,31 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
       <div className="p-4 border-b border-ghost-border">
         <h2 className="text-lg font-semibold text-white">Messages</h2>
         <p className="text-sm text-ghost-muted">{conversations.length} conversations</p>
+
+        {/* Search Input */}
+        <div className="relative mt-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ghost-muted" />
+          <input
+            type="text"
+            placeholder="Search contacts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-ghost-bg border border-ghost-border rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-ghost-muted focus:outline-none focus:border-emerald-500 transition-colors"
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {conversations.length === 0 ? (
+        {filteredConversations.length === 0 && searchQuery ? (
+          <div className="p-4 text-center text-ghost-muted">
+            No conversations matching "{searchQuery}"
+          </div>
+        ) : filteredConversations.length === 0 ? (
           <div className="p-4 text-center text-ghost-muted">
             No conversations yet. Messages will appear here when customers text your GhostOps number.
           </div>
         ) : (
-          conversations.map((conv) => (
+          filteredConversations.map((conv) => (
             <button
               key={conv.id}
               onClick={() => onSelect(conv.id)}

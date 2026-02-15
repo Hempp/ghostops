@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Instagram, Facebook, Clock, CheckCircle, Heart, MessageCircle, Share2, PlusCircle } from 'lucide-react'
+import { toast } from 'sonner'
 import { getSocialPosts, subscribeToSocialPosts, type SocialPost } from '@/lib/supabase'
+import { StatCardSkeleton, ContentCardSkeleton } from '@/components/ui/Skeleton'
 
 interface ContentCalendarProps {
   businessId: string
@@ -19,6 +21,13 @@ export default function ContentCalendar({ businessId }: ContentCalendarProps) {
         setPosts(data)
       } catch (err) {
         console.error('Error loading social posts:', err)
+        toast.error('Failed to load content calendar', {
+          description: 'Check your connection and try again',
+          action: {
+            label: 'Retry',
+            onClick: () => load()
+          }
+        })
       } finally {
         setLoading(false)
       }
@@ -70,8 +79,17 @@ export default function ContentCalendar({ businessId }: ContentCalendarProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-ghost-muted">Loading content calendar...</div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <ContentCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     )
   }
