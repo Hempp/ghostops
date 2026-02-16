@@ -692,7 +692,7 @@ export default function LandingPage() {
               },
               {
                 q: "Is my data secure?",
-                a: "Your data is encrypted and stored on Firebase (Google Cloud). We never share or sell your data. You can export or delete everything anytime. We're SOC2 compliant."
+                a: "Your data is encrypted and stored on Supabase (PostgreSQL with row-level security). We never share or sell your data. You can export or delete everything anytime. All API communications are encrypted via HTTPS."
               },
             ].map((item, i) => (
               <div key={i} className="bg-ghost-bg border border-ghost-border rounded-2xl p-6">
@@ -750,7 +750,7 @@ export default function LandingPage() {
             </div>
 
             <div className="text-ghost-muted text-sm">
-              &copy; 2025 GhostOps. All rights reserved.
+              &copy; 2026 GhostOps. All rights reserved.
             </div>
           </div>
         </div>

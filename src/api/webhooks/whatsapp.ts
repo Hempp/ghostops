@@ -22,6 +22,7 @@ import {
 import { parseOwnerCommand } from '../../lib/claude.js';
 import { createPaymentLink } from '../../lib/stripe.js';
 import { supabase } from '../../lib/supabase.js';
+import { MOCK_MODE, MOCK_BUSINESS } from '../../lib/mock-data.js';
 import type { Business, OwnerCommand } from '../../types/index.js';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -78,7 +79,13 @@ router.post('/', async (req: Request, res: Response) => {
     // Find business by owner phone
     // WhatsApp sends phone as "1234567890" without +
     const ownerPhone = '+' + parsed.from;
-    const business = await getBusinessByOwnerPhone(ownerPhone);
+    let business = await getBusinessByOwnerPhone(ownerPhone);
+
+    // Use mock data for testing if no business found and MOCK_MODE is enabled
+    if (!business && MOCK_MODE) {
+      console.log(`🧪 MOCK MODE: Using mock business for ${ownerPhone}`);
+      business = { ...MOCK_BUSINESS, owner_phone: ownerPhone };
+    }
 
     if (!business) {
       console.log(`No business found for owner phone: ${ownerPhone}`);
