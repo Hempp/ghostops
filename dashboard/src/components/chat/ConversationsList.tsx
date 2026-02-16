@@ -83,9 +83,12 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
     closed: conversations.filter(c => c.status === 'closed').length,
   }
 
+  // On mobile, hide the list when a conversation is selected
+  const mobileHiddenClass = selectedId ? 'hidden md:flex' : 'flex'
+
   if (loading) {
     return (
-      <div className="w-80 border-r border-ghost-border h-full flex flex-col">
+      <div className={`${mobileHiddenClass} w-full md:w-80 border-r border-ghost-border h-full flex-col`}>
         <div className="p-4 border-b border-ghost-border">
           <h2 className="text-lg font-semibold text-white">Messages</h2>
           <p className="text-sm text-ghost-muted">Loading...</p>
@@ -100,7 +103,7 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
   }
 
   return (
-    <div className="w-80 border-r border-ghost-border h-full flex flex-col">
+    <div className={`${mobileHiddenClass} w-full md:w-80 border-r border-ghost-border h-full flex-col`}>
       <div className="p-4 border-b border-ghost-border">
         <h2 className="text-lg font-semibold text-white">Messages</h2>
         <p className="text-sm text-ghost-muted">{conversations.length} conversations</p>
@@ -113,7 +116,7 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
             placeholder="Search contacts..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-ghost-bg border border-ghost-border rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-ghost-muted focus:outline-none focus:border-emerald-500 transition-colors"
+            className="w-full bg-ghost-bg border border-ghost-border rounded-lg pl-9 pr-3 py-2.5 md:py-2 text-sm text-white placeholder:text-ghost-muted focus:outline-none focus:border-emerald-500 transition-colors"
           />
         </div>
 
@@ -123,7 +126,7 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
+              className={`flex-1 px-2 py-2 md:py-1.5 rounded text-xs font-medium transition-colors min-h-[44px] md:min-h-0 ${
                 statusFilter === status
                   ? status === 'active'
                     ? 'bg-emerald-600/20 text-emerald-400'
@@ -157,22 +160,22 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
               key={conv.id}
               onClick={() => onSelect(conv.id)}
               className={
-                "w-full p-4 text-left border-b border-ghost-border transition-colors " +
+                "w-full p-4 text-left border-b border-ghost-border transition-colors min-h-[72px] active:bg-ghost-border/50 " +
                 (selectedId === conv.id ? "bg-emerald-600/10" : "hover:bg-ghost-border/30")
               }
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="font-medium text-white">
+                <span className="font-medium text-white truncate pr-2">
                   {conv.contacts?.name || conv.phone}
                 </span>
                 {conv.last_message_at && (
-                  <span className="text-xs text-ghost-muted">
+                  <span className="text-xs text-ghost-muted flex-shrink-0">
                     {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <span className={"w-2 h-2 rounded-full " +
+                <span className={"w-2 h-2 rounded-full flex-shrink-0 " +
                   (conv.status === 'active' ? 'bg-emerald-500' : 'bg-ghost-muted')} />
                 <span className="text-sm text-ghost-muted capitalize">{conv.status}</span>
               </div>

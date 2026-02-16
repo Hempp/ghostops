@@ -17,9 +17,10 @@ import { MessageSkeleton } from '@/components/ui/Skeleton'
 interface ConversationThreadProps {
   conversationId: string | null
   businessId: string
+  onBack?: () => void
 }
 
-export default function ConversationThread({ conversationId, businessId }: ConversationThreadProps) {
+export default function ConversationThread({ conversationId, businessId, onBack }: ConversationThreadProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [loading, setLoading] = useState(false)
@@ -135,9 +136,12 @@ export default function ConversationThread({ conversationId, businessId }: Conve
     }
   }, [handleSendMessage])
 
+  // On mobile, hide the thread when no conversation is selected
+  const mobileHiddenClass = !conversationId ? 'hidden md:flex' : 'flex'
+
   if (!conversationId) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-ghost-bg">
+      <div className={`${mobileHiddenClass} flex-1 items-center justify-center bg-ghost-bg`}>
         <div className="text-center">
           <div className="w-16 h-16 bg-ghost-card rounded-full flex items-center justify-center mx-auto mb-4">
             <Send className="w-8 h-8 text-ghost-muted" />
@@ -150,8 +154,9 @@ export default function ConversationThread({ conversationId, businessId }: Conve
 
   if (loading) {
     return (
-      <div className="flex-1 flex flex-col bg-ghost-bg">
-        <div className="p-4 border-b border-ghost-border bg-ghost-card">
+      <div className={`${mobileHiddenClass} flex-1 flex-col bg-ghost-bg`}>
+        {/* Mobile: add top padding for header */}
+        <div className="p-4 border-b border-ghost-border bg-ghost-card mt-14 md:mt-0">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-emerald-400 text-sm">Loading...</span>
@@ -169,29 +174,31 @@ export default function ConversationThread({ conversationId, businessId }: Conve
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-ghost-bg">
-      {/* Header with mode toggle */}
-      <div className="p-4 border-b border-ghost-border bg-ghost-card">
+    <div className={`${mobileHiddenClass} flex-1 flex-col bg-ghost-bg`}>
+      {/* Header with mode toggle - add top padding on mobile for fixed header */}
+      <div className="p-4 border-b border-ghost-border bg-ghost-card mt-14 md:mt-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {isHumanMode ? (
               <>
                 <span className="w-2 h-2 bg-orange-500 rounded-full" />
                 <UserCheck className="w-4 h-4 text-orange-400" />
-                <span className="text-orange-400 text-sm font-medium">Human Mode - AI Paused</span>
+                <span className="text-orange-400 text-sm font-medium hidden sm:inline">Human Mode - AI Paused</span>
+                <span className="text-orange-400 text-sm font-medium sm:hidden">Human Mode</span>
               </>
             ) : (
               <>
                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
                 <Bot className="w-4 h-4 text-emerald-400" />
-                <span className="text-emerald-400 text-sm">AI Agent Active</span>
+                <span className="text-emerald-400 text-sm hidden sm:inline">AI Agent Active</span>
+                <span className="text-emerald-400 text-sm sm:hidden">AI Active</span>
               </>
             )}
           </div>
 
           <button
             onClick={handleToggleMode}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-3 py-2 md:py-1.5 rounded-lg text-sm font-medium transition-colors min-h-[44px] md:min-h-0 ${
               isHumanMode
                 ? 'bg-emerald-600 text-white hover:bg-emerald-700'
                 : 'bg-orange-600/20 text-orange-400 hover:bg-orange-600/30'
@@ -200,12 +207,14 @@ export default function ConversationThread({ conversationId, businessId }: Conve
             {isHumanMode ? (
               <>
                 <Play className="w-4 h-4" />
-                Resume AI
+                <span className="hidden sm:inline">Resume AI</span>
+                <span className="sm:hidden">Resume</span>
               </>
             ) : (
               <>
                 <Pause className="w-4 h-4" />
-                Take Over
+                <span className="hidden sm:inline">Take Over</span>
+                <span className="sm:hidden">Take Over</span>
               </>
             )}
           </button>
@@ -232,14 +241,14 @@ export default function ConversationThread({ conversationId, businessId }: Conve
               key={msg.id}
               className={"flex " + (msg.direction === 'outbound' ? "justify-end" : "justify-start")}
             >
-              <div className="flex items-end gap-2 max-w-[80%]">
+              <div className="flex items-end gap-2 max-w-[85%] md:max-w-[80%]">
                 {msg.direction === 'inbound' && (
                   <div className="w-6 h-6 bg-ghost-border rounded-full flex items-center justify-center flex-shrink-0">
                     <User className="w-3 h-3 text-ghost-muted" />
                   </div>
                 )}
                 <div className={msg.direction === 'outbound' ? "bubble-outbound" : "bubble-inbound"}>
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                   <div className="flex items-center gap-2 mt-1 opacity-60">
                     {msg.ai_generated ? (
                       <div className="flex items-center gap-1">
@@ -287,18 +296,18 @@ export default function ConversationThread({ conversationId, businessId }: Conve
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               disabled={sending}
-              className="flex-1 bg-ghost-bg border border-ghost-border rounded-lg px-4 py-2 text-white placeholder:text-ghost-muted focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50"
+              className="flex-1 bg-ghost-bg border border-ghost-border rounded-lg px-4 py-3 md:py-2 text-white placeholder:text-ghost-muted focus:outline-none focus:border-emerald-500 transition-colors disabled:opacity-50 text-base md:text-sm"
             />
             <button
               onClick={handleSendMessage}
               disabled={!messageInput.trim() || sending}
-              className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-3 md:p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[48px] min-h-[48px] md:min-w-0 md:min-h-0 flex items-center justify-center"
             >
               <Send className={`w-5 h-5 ${sending ? 'animate-pulse' : ''}`} />
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-center gap-2 text-ghost-muted text-sm">
+          <div className="flex items-center justify-center gap-2 text-ghost-muted text-sm py-2">
             <Bot className="w-4 h-4 text-emerald-400" />
             <span>AI Agent is handling this conversation via SMS</span>
           </div>

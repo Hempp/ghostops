@@ -165,19 +165,19 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
         {statCards.map((stat, i) => {
           const Icon = stat.icon
           return (
-            <div key={i} className="stat-card bg-ghost-card border border-ghost-border rounded-2xl p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className={"w-12 h-12 rounded-xl flex items-center justify-center " + stat.bg + " " + stat.text}>
-                  <Icon className="w-6 h-6" />
+            <div key={i} className="stat-card bg-ghost-card border border-ghost-border rounded-2xl p-4 md:p-6">
+              <div className="flex items-start justify-between mb-3 md:mb-4">
+                <div className={"w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center " + stat.bg + " " + stat.text}>
+                  <Icon className="w-5 h-5 md:w-6 md:h-6" />
                 </div>
                 <div className="flex items-center gap-2">
-                  {stat.change && <span className="text-sm font-medium text-emerald-400">{stat.change}</span>}
+                  {stat.change && <span className="text-xs md:text-sm font-medium text-emerald-400">{stat.change}</span>}
                   <Tooltip content={stat.tooltip} position="left">
                     <Info className="w-4 h-4 text-ghost-muted hover:text-white cursor-help transition-colors" />
                   </Tooltip>
                 </div>
               </div>
-              <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
+              <div className="text-2xl md:text-3xl font-bold text-white mb-1">{stat.value}</div>
               <div className="text-sm text-ghost-muted">{stat.label}</div>
               {stat.subtext && <div className="text-xs text-ghost-muted mt-1">{stat.subtext}</div>}
             </div>
@@ -187,21 +187,24 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
 
       {/* Recent stats chart placeholder - shows last 7 days */}
       {recentStats.length > 0 && (
-        <div className="bg-ghost-card border border-ghost-border rounded-2xl p-6">
+        <div className="bg-ghost-card border border-ghost-border rounded-2xl p-4 md:p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Last 7 Days</h2>
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-1 md:gap-2">
             {recentStats.slice(0, 7).reverse().map((day, i) => (
               <div key={i} className="text-center">
-                <div className="text-xs text-ghost-muted mb-2">
-                  {new Date(day.date).toLocaleDateString('en', { weekday: 'short' })}
+                <div className="text-[10px] md:text-xs text-ghost-muted mb-2">
+                  {new Date(day.date).toLocaleDateString('en', { weekday: 'narrow' })}
+                  <span className="hidden md:inline">
+                    {new Date(day.date).toLocaleDateString('en', { weekday: 'short' }).slice(1)}
+                  </span>
                 </div>
-                <div className="h-20 bg-ghost-border rounded flex flex-col justify-end p-1">
+                <div className="h-16 md:h-20 bg-ghost-border rounded flex flex-col justify-end p-1">
                   <div
                     className="bg-emerald-500 rounded transition-all"
                     style={{ height: `${Math.min(100, (day.messages_sent + day.messages_received) * 2)}%` }}
                   />
                 </div>
-                <div className="text-xs text-ghost-muted mt-1">
+                <div className="text-[10px] md:text-xs text-ghost-muted mt-1">
                   {day.messages_sent + day.messages_received}
                 </div>
               </div>

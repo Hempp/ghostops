@@ -10,6 +10,7 @@ import InvoiceTracker from '@/components/invoices/InvoiceTracker'
 import ContentCalendar from '@/components/calendar/ContentCalendar'
 import SettingsPanel from '@/components/settings/SettingsPanel'
 import KeyboardShortcutsHelp from '@/components/ui/KeyboardShortcutsHelp'
+import { SectionErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { getStats } from '@/lib/supabase'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useAuth } from '@/components/auth/AuthProvider'
@@ -121,70 +122,88 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen">
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
+    <div className="flex flex-col md:flex-row h-screen">
+      <Sidebar
+        activeView={activeView}
+        onViewChange={setActiveView}
+        selectedConversation={selectedConversation}
+        onBackToList={() => setSelectedConversation(null)}
+      />
 
       {/* Keyboard shortcuts help modal */}
       {showShortcuts && (
         <KeyboardShortcutsHelp onClose={() => setShowShortcuts(false)} />
       )}
 
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden pb-16 md:pb-0">
         {activeView === 'dashboard' && (
-          <div className="p-6 h-full overflow-y-auto">
-            <header className="mb-8">
-              <h1 className="text-3xl font-serif text-white">Command Center</h1>
-              <p className="text-ghost-muted mt-1">
+          <div className="p-4 md:p-6 h-full overflow-y-auto">
+            <header className="mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-serif text-white">Command Center</h1>
+              <p className="text-ghost-muted mt-1 text-sm md:text-base">
                 {todayTaskCount !== null
                   ? `Your ghost handled ${todayTaskCount} tasks today`
                   : 'Loading activity...'}
               </p>
             </header>
-            <StatsOverview businessId={businessId} />
+            <SectionErrorBoundary section="Dashboard Stats">
+              <StatsOverview businessId={businessId} />
+            </SectionErrorBoundary>
           </div>
         )}
 
         {activeView === 'conversations' && (
-          <div className="flex h-full">
-            <ConversationsList
-              businessId={businessId}
-              selectedId={selectedConversation}
-              onSelect={setSelectedConversation}
-            />
-            <ConversationThread
-              conversationId={selectedConversation}
-              businessId={businessId}
-            />
+          <div className="flex flex-col md:flex-row h-full">
+            <SectionErrorBoundary section="Conversations List">
+              <ConversationsList
+                businessId={businessId}
+                selectedId={selectedConversation}
+                onSelect={setSelectedConversation}
+              />
+            </SectionErrorBoundary>
+            <SectionErrorBoundary section="Conversation Thread">
+              <ConversationThread
+                conversationId={selectedConversation}
+                businessId={businessId}
+                onBack={() => setSelectedConversation(null)}
+              />
+            </SectionErrorBoundary>
           </div>
         )}
 
         {activeView === 'invoices' && (
-          <div className="p-6 h-full overflow-y-auto">
-            <header className="mb-8">
-              <h1 className="text-3xl font-serif text-white">Invoices</h1>
-              <p className="text-ghost-muted mt-1">Track payments and send reminders</p>
+          <div className="p-4 md:p-6 h-full overflow-y-auto">
+            <header className="mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-serif text-white">Invoices</h1>
+              <p className="text-ghost-muted mt-1 text-sm md:text-base">Track payments and send reminders</p>
             </header>
-            <InvoiceTracker businessId={businessId} />
+            <SectionErrorBoundary section="Invoice Tracker">
+              <InvoiceTracker businessId={businessId} />
+            </SectionErrorBoundary>
           </div>
         )}
 
         {activeView === 'calendar' && (
-          <div className="p-6 h-full overflow-y-auto">
-            <header className="mb-8">
-              <h1 className="text-3xl font-serif text-white">Content Calendar</h1>
-              <p className="text-ghost-muted mt-1">Scheduled posts and engagement stats</p>
+          <div className="p-4 md:p-6 h-full overflow-y-auto">
+            <header className="mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-serif text-white">Content Calendar</h1>
+              <p className="text-ghost-muted mt-1 text-sm md:text-base">Scheduled posts and engagement stats</p>
             </header>
-            <ContentCalendar businessId={businessId} />
+            <SectionErrorBoundary section="Content Calendar">
+              <ContentCalendar businessId={businessId} />
+            </SectionErrorBoundary>
           </div>
         )}
 
         {activeView === 'settings' && (
-          <div className="p-6 h-full overflow-y-auto">
-            <header className="mb-8">
-              <h1 className="text-3xl font-serif text-white">Settings</h1>
-              <p className="text-ghost-muted mt-1">Configure your AI assistant preferences</p>
+          <div className="p-4 md:p-6 h-full overflow-y-auto">
+            <header className="mb-6 md:mb-8">
+              <h1 className="text-2xl md:text-3xl font-serif text-white">Settings</h1>
+              <p className="text-ghost-muted mt-1 text-sm md:text-base">Configure your AI assistant preferences</p>
             </header>
-            <SettingsPanel businessId={businessId} />
+            <SectionErrorBoundary section="Settings">
+              <SettingsPanel businessId={businessId} />
+            </SectionErrorBoundary>
           </div>
         )}
       </main>

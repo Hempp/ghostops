@@ -15,6 +15,29 @@ body {
   @apply bg-ghost-bg text-white font-sans antialiased;
 }
 
+/* Safe area support for iPhone notch/home indicator */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* Prevent text zoom on input focus in iOS */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px;
+  }
+}
+
+/* Better touch targets on mobile */
+@media (hover: none) and (pointer: coarse) {
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+}
+
 /* iMessage-style bubbles */
 .bubble-inbound {
   @apply bg-ghost-card text-white rounded-2xl rounded-bl-md px-4 py-2 max-w-[80%];
