@@ -59,7 +59,7 @@ twilioRouter.post('/sms', async (req: Request, res: Response) => {
     }
 
     // Check if business is paused
-    if (business.settings.paused) {
+    if (business.settings?.paused || business.is_paused) {
       console.log(`Business ${business.name} is paused, skipping auto-reply`);
       return res.status(200).send('OK');
     }
@@ -120,10 +120,10 @@ twilioRouter.post('/status', async (req: Request, res: Response) => {
     if (status === 'completed' || status === 'no-answer' || status === 'busy') {
       const business = await getBusinessByTwilioNumber(to);
 
-      if (business && business.settings.missed_call_textback) {
+      if (business && (business.settings?.missed_call_textback || business.features_enabled?.missed_call_textback)) {
         // Don't text back the owner
         if (from !== business.owner_phone) {
-          await handleMissedCall(business, from);
+          await handleMissedCall(business as Business, from);
         }
       }
     }
@@ -161,7 +161,7 @@ async function handleOwnerMessage(
     // For now, just acknowledge
     await sendSms(
       business.owner_phone,
-      business.twilio_number,
+      business.twilio_number!,
       `Didn't recognize that command. Text "help" for available commands.`
     );
     res.status(200).send('OK');
@@ -196,13 +196,13 @@ async function executeOwnerCommand(
       break;
 
     case 'invoice':
-      const invoice = await createInvoice(
-        business.id,
-        command.customer,
-        '', // Phone will be looked up or prompted
-        command.amount,
-        command.description
-      );
+      const invoice = await createInvoice({
+        business_id: business.id,
+        contact_phone: '', // Phone will be looked up or prompted
+        contact_name: command.customer,
+        amount_cents: Math.round(command.amount * 100),
+        description: command.description,
+      });
 
       // Create Stripe payment link
       const paymentLink = await createPaymentLink(
@@ -234,7 +234,7 @@ async function executeOwnerCommand(
       } else {
         responseMessage = `📋 Unpaid invoices (${unpaid.length}):\n` +
           unpaid.slice(0, 5).map(inv =>
-            `• ${inv.customer_name}: $${inv.amount / 100}`
+            `• ${inv.contact_name || 'Unknown'}: $${inv.amount_cents / 100}`
           ).join('\n');
         if (unpaid.length > 5) {
           responseMessage += `\n...and ${unpaid.length - 5} more`;
@@ -258,7 +258,7 @@ async function executeOwnerCommand(
 
   await sendSms(
     business.owner_phone,
-    business.twilio_number,
+    business.twilio_number!,
     responseMessage
   );
 
@@ -278,12 +278,17 @@ async function handleSocialMediaFlow(
   // Create conversation for this social media flow
   const conversation = await getOrCreateConversation(
     business.id,
-    business.owner_phone,
-    'social_media'
+    business.owner_phone
   );
 
   // Save the incoming message
-  await saveMessage(conversation.id, 'inbound', body, mediaUrls);
+  await saveMessage({
+    conversation_id: conversation.id,
+    business_id: business.id,
+    direction: 'inbound',
+    content: body,
+    media_urls: mediaUrls,
+  });
 
   // Generate caption options
   const captions = await generateCaptions(
@@ -293,12 +298,13 @@ async function handleSocialMediaFlow(
   );
 
   // Create social post record
-  const post = await createSocialPost(
-    business.id,
-    conversation.id,
-    mediaUrls,
-    captions
-  );
+  const post = await createSocialPost({
+    business_id: business.id,
+    content: body || 'Photo/video for social media',
+    media_urls: mediaUrls,
+    ai_options: captions,
+    platforms: ['instagram', 'facebook'],
+  });
 
   // Send caption options to owner
   const optionsMessage = `📸 Caption options for your post:\n\n` +
@@ -309,11 +315,16 @@ async function handleSocialMediaFlow(
 
   await sendSms(
     business.owner_phone,
-    business.twilio_number,
+    business.twilio_number!,
     optionsMessage
   );
 
-  await saveMessage(conversation.id, 'outbound', optionsMessage);
+  await saveMessage({
+    conversation_id: conversation.id,
+    business_id: business.id,
+    direction: 'outbound',
+    content: optionsMessage,
+  });
 
   res.status(200).send('OK');
 }
@@ -332,19 +343,28 @@ async function handleCustomerMessage(
   // Get or create conversation
   const conversation = await getOrCreateConversation(
     business.id,
-    from,
-    'general'
+    from
   );
 
   // Save incoming message
-  await saveMessage(conversation.id, 'inbound', body, mediaUrls);
+  await saveMessage({
+    conversation_id: conversation.id,
+    business_id: business.id,
+    direction: 'inbound',
+    content: body,
+    media_urls: mediaUrls,
+  });
 
   // Get conversation history
   const history = await getConversationHistory(conversation.id);
 
   // Check if this is a new lead (first message in conversation)
   if (history.length <= 1) {
-    await createLead(business.id, from, 'sms_inquiry', conversation.id);
+    await createLead({
+      business_id: business.id,
+      phone: from,
+      source: 'sms_inquiry',
+    });
   }
 
   // Generate AI response
@@ -352,12 +372,18 @@ async function handleCustomerMessage(
     business,
     history,
     body,
-    { type: conversation.type }
+    { type: 'general' }
   );
 
   // Save and send response
-  await saveMessage(conversation.id, 'outbound', aiResponse);
-  await sendSms(from, business.twilio_number, aiResponse);
+  await saveMessage({
+    conversation_id: conversation.id,
+    business_id: business.id,
+    direction: 'outbound',
+    content: aiResponse,
+    ai_generated: true,
+  });
+  await sendSms(from, business.twilio_number!, aiResponse);
 
   res.status(200).send('OK');
 }
@@ -375,12 +401,15 @@ async function handleMissedCall(
   // Create conversation
   const conversation = await getOrCreateConversation(
     business.id,
-    callerPhone,
-    'missed_call'
+    callerPhone
   );
 
   // Create lead
-  await createLead(business.id, callerPhone, 'missed_call', conversation.id);
+  await createLead({
+    business_id: business.id,
+    phone: callerPhone,
+    source: 'missed_call',
+  });
 
   // Generate missed call response
   const response = await generateResponse(
@@ -398,8 +427,14 @@ async function handleMissedCall(
   );
 
   // Save and send
-  await saveMessage(conversation.id, 'outbound', response);
-  await sendSms(callerPhone, business.twilio_number, response);
+  await saveMessage({
+    conversation_id: conversation.id,
+    business_id: business.id,
+    direction: 'outbound',
+    content: response,
+    ai_generated: true,
+  });
+  await sendSms(callerPhone, business.twilio_number!, response);
 }
 
 // ===========================================
@@ -417,29 +452,38 @@ twilioRouter.post('/lead-webhook', async (req: Request, res: Response) => {
       .eq('id', businessId)
       .single();
 
-    if (!business || business.settings.paused) {
+    if (!business || business.settings?.paused) {
       return res.status(200).json({ success: false, reason: 'Business not found or paused' });
     }
 
     // Create conversation and lead
     const conversation = await getOrCreateConversation(
       business.id,
-      phone,
-      'lead'
+      phone
     );
 
-    await createLead(business.id, phone, source || 'website_form', conversation.id);
+    await createLead({
+      business_id: business.id,
+      phone,
+      name,
+      source: source || 'website_form',
+    });
 
     // Save the lead's initial message if provided
     if (message) {
-      await saveMessage(conversation.id, 'inbound', message);
+      await saveMessage({
+        conversation_id: conversation.id,
+        business_id: business.id,
+        direction: 'inbound',
+        content: message,
+      });
     }
 
     // Generate speed-to-lead response
     const response = await generateResponse(
-      business,
+      business as Business,
       [],
-      message || `Hi, I'm interested in your ${business.industry} services`,
+      message || `Hi, I'm interested in your ${business.industry || 'business'} services`,
       {
         type: 'lead',
         leadInfo: { name, source },
@@ -447,8 +491,14 @@ twilioRouter.post('/lead-webhook', async (req: Request, res: Response) => {
     );
 
     // Send within 60 seconds
-    await saveMessage(conversation.id, 'outbound', response);
-    await sendSms(phone, business.twilio_number, response);
+    await saveMessage({
+      conversation_id: conversation.id,
+      business_id: business.id,
+      direction: 'outbound',
+      content: response,
+      ai_generated: true,
+    });
+    await sendSms(phone, business.twilio_number!, response);
 
     console.log(`⚡ Speed-to-lead response sent to ${phone} within 60s`);
 

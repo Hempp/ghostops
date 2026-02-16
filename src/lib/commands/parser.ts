@@ -16,6 +16,7 @@ export function parseOwnerCommand(message: string): OwnerCommand {
   if (invoiceMatch) {
     return {
       type: 'invoice',
+      customer: invoiceMatch[1],
       contact_name: invoiceMatch[1],
       amount: parseFloat(invoiceMatch[2]),
       description: invoiceMatch[3].trim()

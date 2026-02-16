@@ -155,6 +155,9 @@ async function sendMorningBriefing(business: Business): Promise<void> {
     });
 
     // Send SMS
+    if (!business.twilio_number) {
+      throw new Error('Business has no Twilio number');
+    }
     await sendSms(
       business.owner_phone,
       business.twilio_number,

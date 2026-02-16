@@ -1,9 +1,59 @@
 // GhostOps Type Definitions - FORGE-X Architecture
 
+// Social Platform Types
+export type SocialPlatform = 'instagram' | 'facebook';
+
+export interface PostEngagement {
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  reach?: number;
+  impressions?: number;
+}
+
+// Business Settings
+export interface BusinessSettings {
+  paused: boolean;
+  auto_reply_enabled: boolean;
+  missed_call_textback: boolean;
+  speed_to_lead_enabled: boolean;
+  review_requests_enabled: boolean;
+  morning_briefing_enabled: boolean;
+  morning_briefing_time: string;
+  invoice_reminder_days: number[];
+}
+
+// Business Integrations
+export interface BusinessIntegrations {
+  stripe_account_id?: string;
+  meta_access_token?: string;
+  meta_page_id?: string;
+  meta_instagram_id?: string;
+  google_refresh_token?: string;
+  google_calendar_id?: string;
+  google_business_id?: string;
+}
+
+// Briefing Metrics (snake_case to match database)
+export interface BriefingMetrics {
+  new_leads: number;
+  new_reviews: number;
+  average_rating: number;
+  revenue_today: number;
+  revenue_week: number;
+  unpaid_invoices: number;
+  unpaid_amount: number;
+  appointments_today: number;
+  posts_published?: number;
+  total_engagement?: number;
+}
+
 export interface Business {
   id: string;
   name: string;
+  owner_name: string;
   owner_phone: string;
+  industry: string;
   twilio_number: string | null;
   timezone: string;
   stripe_account_id: string | null;
@@ -17,6 +67,8 @@ export interface Business {
   services: string[];
   business_hours: Record<string, string>;
   features_enabled: FeaturesEnabled;
+  settings: BusinessSettings;
+  integrations: BusinessIntegrations;
   is_active: boolean;
   is_paused: boolean;
   created_at: string;
@@ -100,17 +152,21 @@ export interface Invoice {
   contact_id: string | null;
   contact_phone: string;
   contact_name: string | null;
+  customer_phone: string | null;
+  customer_name: string | null;
+  amount: number;
   amount_cents: number;
   description: string;
   line_items: { description: string; amount_cents: number; quantity: number }[];
   stripe_invoice_id: string | null;
   stripe_payment_link: string | null;
   stripe_hosted_url: string | null;
-  status: 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled';
+  status: 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'cancelled' | 'reminded' | 'pending';
   sent_at: string | null;
   paid_at: string | null;
   reminder_3day_sent: boolean;
   reminder_7day_sent: boolean;
+  reminder_count: number;
   created_at: string;
 }
 
@@ -120,6 +176,7 @@ export interface Review {
   platform: 'google' | 'facebook' | 'yelp';
   external_id: string | null;
   author_name: string | null;
+  reviewer_name: string | null;
   rating: number | null;
   content: string | null;
   response: string | null;
@@ -248,9 +305,9 @@ export type OwnerCommand =
   | { type: 'status' }
   | { type: 'help' }
   | { type: 'unpaid' }
-  | { type: 'invoice'; contact_name: string; amount: number; description: string }
-  | { type: 'post'; content?: string }
-  | { type: 'schedule'; post_id: string; datetime: string }
+  | { type: 'invoice'; customer: string; contact_name?: string; amount: number; description: string }
+  | { type: 'post'; content?: string; platforms?: SocialPlatform[] }
+  | { type: 'schedule'; post_id: string; postId?: string; datetime: string }
   | { type: 'stats'; period?: 'today' | 'week' | 'month' }
   | { type: 'unknown'; raw: string };
 

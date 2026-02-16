@@ -101,6 +101,9 @@ async function sendReminder(invoice: Invoice, business: Business): Promise<void>
   }
 
   try {
+    if (!invoice.customer_phone || !business.twilio_number) {
+      throw new Error('Missing phone number');
+    }
     await sendSms(invoice.customer_phone, business.twilio_number, message);
 
     // Update invoice
@@ -141,12 +144,12 @@ async function processOverdueInvoices(): Promise<void> {
       await updateInvoice(invoice.id, { status: 'overdue' });
 
       // Notify owner
-      if (business && !business.settings.paused) {
-        const amountDollars = (invoice.amount / 100).toFixed(2);
+      if (business && !business.settings?.paused && business.twilio_number) {
+        const amountDollars = ((invoice.amount || invoice.amount_cents) / 100).toFixed(2);
         await sendSms(
           business.owner_phone,
           business.twilio_number,
-          `⚠️ Invoice overdue!\n${invoice.customer_name}: $${amountDollars}\nCreated ${Math.floor((new Date().getTime() - new Date(invoice.created_at).getTime()) / (1000 * 60 * 60 * 24))} days ago.`
+          `⚠️ Invoice overdue!\n${invoice.customer_name || invoice.contact_name}: $${amountDollars}\nCreated ${Math.floor((new Date().getTime() - new Date(invoice.created_at).getTime()) / (1000 * 60 * 60 * 24))} days ago.`
         );
       }
 

@@ -61,12 +61,12 @@ export async function generateResponse(
     contextInfo += `\n\nAVAILABLE APPOINTMENT SLOTS:\n${context.appointmentSlots.join('\n')}`;
   }
 
-  const messages = conversationHistory.map((msg) => ({
-    role: msg.direction === 'inbound' ? 'user' : 'assistant' as const,
+  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = conversationHistory.map((msg) => ({
+    role: msg.direction === 'inbound' ? 'user' as const : 'assistant' as const,
     content: msg.content,
   }));
 
-  messages.push({ role: 'user', content: latestMessage });
+  messages.push({ role: 'user' as const, content: latestMessage });
 
   const response = await anthropic.messages.create({
     model: MODEL,
@@ -137,7 +137,7 @@ export async function parseOwnerCommand(
   if (scheduleMatch) {
     return {
       type: 'schedule',
-      postId: scheduleMatch[1],
+      post_id: scheduleMatch[1],
       datetime: scheduleMatch[2],
     };
   }

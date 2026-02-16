@@ -93,7 +93,7 @@ async function publishPost(
     return;
   }
 
-  const caption = post.selected_caption || post.caption_options[0] || '';
+  const caption = post.ai_options[post.selected_option || 0] || post.content || '';
   const mediaUrls = post.media_urls;
 
   // Publish to Instagram
@@ -215,32 +215,32 @@ async function updateEngagementMetrics(): Promise<void> {
       const postIds = post.post_ids as Record<SocialPlatform, string>;
 
       // Get Instagram engagement
-      if (postIds.instagram) {
+      if (postIds.instagram && business.integrations?.meta_access_token) {
         try {
           const igEngagement = await getPostEngagement(
             business.integrations.meta_access_token,
             postIds.instagram,
             'instagram'
           );
-          engagement.likes += igEngagement.likes;
-          engagement.comments += igEngagement.comments;
-          engagement.reach += igEngagement.reach;
+          engagement.likes += igEngagement.likes || 0;
+          engagement.comments += igEngagement.comments || 0;
+          engagement.reach = (engagement.reach || 0) + (igEngagement.reach || 0);
         } catch {
           // Post might have been deleted or token expired
         }
       }
 
       // Get Facebook engagement
-      if (postIds.facebook) {
+      if (postIds.facebook && business.integrations?.meta_access_token) {
         try {
           const fbEngagement = await getPostEngagement(
             business.integrations.meta_access_token,
             postIds.facebook,
             'facebook'
           );
-          engagement.likes += fbEngagement.likes;
-          engagement.comments += fbEngagement.comments;
-          engagement.shares += fbEngagement.shares;
+          engagement.likes += fbEngagement.likes || 0;
+          engagement.comments += fbEngagement.comments || 0;
+          engagement.shares = (engagement.shares || 0) + (fbEngagement.shares || 0);
         } catch {
           // Post might have been deleted or token expired
         }
@@ -260,6 +260,7 @@ async function updateEngagementMetrics(): Promise<void> {
 
 async function notifyOwner(business: Business, message: string): Promise<void> {
   try {
+    if (!business.twilio_number) return;
     await sendSms(business.owner_phone, business.twilio_number, message);
   } catch (error) {
     console.error('Failed to notify owner:', error);

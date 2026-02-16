@@ -91,14 +91,14 @@ async function fetchBusinessReviews(business: Business): Promise<void> {
       if (existing) continue;
 
       // Save new review
-      const savedReview = await saveReview(
-        business.id,
-        'google',
-        review.reviewer.displayName,
-        parseInt(review.starRating.replace('STAR_', '').replace('_', '.')),
-        review.comment || '',
-        review.reviewId
-      );
+      const savedReview = await saveReview({
+        business_id: business.id,
+        platform: 'google',
+        author_name: review.reviewer.displayName,
+        rating: parseInt(review.starRating.replace('STAR_', '').replace('_', '.')),
+        content: review.comment || '',
+        external_id: review.reviewId,
+      });
 
       // Notify owner of new review
       await notifyNewReview(business, savedReview);
@@ -117,13 +117,17 @@ async function notifyNewReview(
   business: Business,
   review: Review
 ): Promise<void> {
-  const stars = '⭐'.repeat(review.rating);
+  const rating = review.rating || 0;
+  const content = review.content || '';
+  const reviewerName = review.reviewer_name || review.author_name || 'Anonymous';
+  const stars = '⭐'.repeat(rating);
   const message =
-    `New ${review.rating}-star review!\n\n` +
+    `New ${rating}-star review!\n\n` +
     `${stars}\n` +
-    `"${review.content.substring(0, 100)}${review.content.length > 100 ? '...' : ''}"\n` +
-    `- ${review.reviewer_name}`;
+    `"${content.substring(0, 100)}${content.length > 100 ? '...' : ''}"\n` +
+    `- ${reviewerName}`;
 
+  if (!business.twilio_number) return;
   await sendSms(business.owner_phone, business.twilio_number, message);
 }
 
@@ -133,12 +137,16 @@ async function respondToReview(
   googleReviewId: string
 ): Promise<void> {
   try {
+    const reviewerName = review.reviewer_name || review.author_name || 'Customer';
+    const rating = review.rating || 3;
+    const content = review.content || '';
+
     // Generate AI response
     const response = await generateReviewResponse(
       business,
-      review.reviewer_name,
-      review.rating,
-      review.content
+      reviewerName,
+      rating,
+      content
     );
 
     // Post response to Google (placeholder - would use GMB API)
@@ -157,7 +165,7 @@ async function respondToReview(
       })
       .eq('id', review.id);
 
-    console.log(`✅ Responded to review from ${review.reviewer_name}`);
+    console.log(`✅ Responded to review from ${reviewerName}`);
   } catch (error) {
     console.error('Failed to respond to review:', error);
   }
@@ -237,6 +245,7 @@ async function sendReviewRequests(business: Business): Promise<void> {
       `Thank you! 🙏`;
 
     try {
+      if (!business.twilio_number) continue;
       await sendSms(appointment.customer_phone, business.twilio_number, message);
       console.log(`📤 Review request sent to ${appointment.customer_name}`);
     } catch (error) {

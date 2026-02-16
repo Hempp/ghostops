@@ -326,6 +326,45 @@ export async function getActiveBusinesses() {
   return data || [];
 }
 
+// Alias for getAllBusinesses
+export const getAllBusinesses = getActiveBusinesses;
+
+// Save daily briefing
+export async function saveDailyBriefing(businessId: string, metrics: object) {
+  const date = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('daily_briefings')
+    .insert({
+      business_id: businessId,
+      date,
+      metrics,
+      sent_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// Save review
+export async function saveReview(review: {
+  business_id: string;
+  platform: string;
+  external_id?: string;
+  author_name?: string;
+  rating?: number;
+  content?: string;
+  published_at?: string;
+}) {
+  const { data, error } = await supabase
+    .from('reviews')
+    .insert(review)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // Owner Conversation Operations
 export async function getOrCreateOwnerConversation(businessId: string, ownerPhone: string) {
   const { data: existing } = await supabase
@@ -360,6 +399,7 @@ export async function saveOwnerMessage(message: {
   business_id: string;
   direction: 'inbound' | 'outbound';
   content: string;
+  ai_generated?: boolean;
 }) {
   const { data, error } = await supabase
     .from('owner_messages')
@@ -368,6 +408,121 @@ export async function saveOwnerMessage(message: {
     .single();
   if (error) throw error;
   return data;
+}
+
+// Update Business Settings
+export async function updateBusinessSettings(businessId: string, settings: Record<string, unknown>) {
+  const { error } = await supabase
+    .from('businesses')
+    .update(settings)
+    .eq('id', businessId);
+  if (error) throw error;
+}
+
+// Get Business Metrics
+export async function getBusinessMetrics(businessId: string) {
+  const today = new Date().toISOString().split('T')[0];
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  // Today's stats
+  const { data: todayStats } = await supabase
+    .from('daily_stats')
+    .select('*')
+    .eq('business_id', businessId)
+    .eq('date', today)
+    .single();
+
+  // Week's stats
+  const { data: weekStats } = await supabase
+    .from('daily_stats')
+    .select('*')
+    .eq('business_id', businessId)
+    .gte('date', weekAgo);
+
+  // Unpaid invoices
+  const { data: unpaid } = await supabase
+    .from('invoices')
+    .select('amount_cents')
+    .eq('business_id', businessId)
+    .in('status', ['sent', 'viewed', 'overdue', 'reminded']);
+
+  // Today's appointments
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const { data: appointments } = await supabase
+    .from('appointments')
+    .select('id')
+    .eq('business_id', businessId)
+    .gte('scheduled_at', todayStart.toISOString())
+    .lte('scheduled_at', todayEnd.toISOString());
+
+  const weekRevenue = weekStats?.reduce((sum: number, s: { revenue_cents?: number }) => sum + (s.revenue_cents || 0), 0) || 0;
+  const unpaidTotal = unpaid?.reduce((sum: number, i: { amount_cents: number }) => sum + i.amount_cents, 0) || 0;
+
+  return {
+    newLeads: todayStats?.new_leads || 0,
+    appointmentsToday: appointments?.length || 0,
+    revenueToday: (todayStats?.revenue_cents || 0) / 100,
+    revenueWeek: weekRevenue / 100,
+    unpaidInvoices: unpaid?.length || 0,
+    unpaidAmount: unpaidTotal / 100,
+    newReviews: todayStats?.reviews_received || 0,
+    avgRating: todayStats?.avg_rating || 0,
+  };
+}
+
+// Update Invoice
+export async function updateInvoice(invoiceId: string, updates: Partial<{
+  status: string;
+  stripe_payment_link: string;
+  stripe_payment_intent_id: string;
+  customer_phone: string;
+  sent_at: string;
+  paid_at: string;
+  reminder_count: number;
+  reminder_3day_sent: boolean;
+  reminder_7day_sent: boolean;
+}>) {
+  const { error } = await supabase
+    .from('invoices')
+    .update(updates)
+    .eq('id', invoiceId);
+  if (error) throw error;
+}
+
+// Get Conversation History
+export async function getConversationHistory(conversationId: string, limit = 20) {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+  return data || [];
+}
+
+// Update Social Post
+export async function updateSocialPost(postId: string, updates: Partial<{
+  status: string;
+  content: string;
+  selected_option: number;
+  selected_caption: string;
+  scheduled_at: string;
+  scheduled_for: string;
+  posted_at: string;
+  post_ids: Record<string, string>;
+  platforms: string[];
+  engagement: { likes?: number; comments?: number; shares?: number; reach?: number };
+}>) {
+  const { error } = await supabase
+    .from('social_posts')
+    .update(updates)
+    .eq('id', postId);
+  if (error) throw error;
 }
 
 // Business Intelligence - Aggregate data for co-founder AI context

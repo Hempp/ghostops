@@ -1,5 +1,5 @@
 import { google } from 'googleapis'
-import { supabase } from '../supabase'
+import { supabase } from '../supabase.js'
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -25,7 +25,11 @@ export function generateAuthUrl(businessId: string): string {
   })
 }
 
-export async function handleOAuthCallback(code: string, businessId: string) {
+export async function handleOAuthCallback(code: string, businessId: string): Promise<{
+  access_token?: string | null;
+  refresh_token?: string | null;
+  expiry_date?: number | null;
+}> {
   const { tokens } = await oauth2Client.getToken(code)
 
   // Store tokens in Supabase

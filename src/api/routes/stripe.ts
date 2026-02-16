@@ -29,15 +29,15 @@ stripeRouter.post('/', async (req: Request, res: Response) => {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as CheckoutSession);
+        await handleCheckoutCompleted(event.data.object as unknown as CheckoutSession);
         break;
 
       case 'payment_intent.succeeded':
-        await handlePaymentSucceeded(event.data.object as PaymentIntent);
+        await handlePaymentSucceeded(event.data.object as unknown as PaymentIntent);
         break;
 
       case 'payment_intent.payment_failed':
-        await handlePaymentFailed(event.data.object as PaymentIntent);
+        await handlePaymentFailed(event.data.object as unknown as PaymentIntent);
         break;
 
       default:
@@ -222,7 +222,7 @@ stripeRouter.post('/send-invoice', async (req: Request, res: Response) => {
     const amountDollars = (invoice.amount / 100).toFixed(2);
     await sendSms(
       customerPhone,
-      business.twilio_number,
+      business.twilio_number!,
       `Hi ${invoice.customer_name}! Here's your invoice from ${business.name}:\n\n` +
         `💰 $${amountDollars} - ${invoice.description}\n\n` +
         `Pay securely here: ${invoice.stripe_payment_link}`
@@ -231,7 +231,7 @@ stripeRouter.post('/send-invoice', async (req: Request, res: Response) => {
     // Notify owner
     await sendSms(
       business.owner_phone,
-      business.twilio_number,
+      business.twilio_number!,
       `📤 Invoice sent to ${invoice.customer_name} (${customerPhone}): $${amountDollars}`
     );
 

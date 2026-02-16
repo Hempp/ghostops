@@ -12,26 +12,16 @@ export async function createInvoicePaymentLink(
   invoice: Invoice,
   business: Business
 ): Promise<{ paymentLink: string; stripeInvoiceId: string }> {
-  // Create or get Stripe customer
-  const customers = await stripe.customers.list({
-    limit: 1,
-    query: `phone:'${invoice.contact_phone}'`
+  // Create a new customer for this invoice
+  const customer = await stripe.customers.create({
+    phone: invoice.contact_phone || undefined,
+    name: invoice.contact_name || undefined,
+    metadata: {
+      business_id: business.id,
+      ghostops_contact_phone: invoice.contact_phone || ''
+    }
   });
-  
-  let customerId: string;
-  if (customers.data.length > 0) {
-    customerId = customers.data[0].id;
-  } else {
-    const customer = await stripe.customers.create({
-      phone: invoice.contact_phone,
-      name: invoice.contact_name || undefined,
-      metadata: {
-        business_id: business.id,
-        ghostops_contact_phone: invoice.contact_phone
-      }
-    });
-    customerId = customer.id;
-  }
+  const customerId = customer.id;
   
   // Create Stripe Invoice
   const stripeInvoice = await stripe.invoices.create({

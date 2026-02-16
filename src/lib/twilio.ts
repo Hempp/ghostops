@@ -59,14 +59,14 @@ export async function sendBulkSms(
 export async function purchasePhoneNumber(
   areaCode?: string
 ): Promise<string> {
-  const searchParams: { limit: number; smsEnabled: boolean; voiceEnabled: boolean; areaCode?: string } = {
+  const searchParams: { limit: number; smsEnabled: boolean; voiceEnabled: boolean; areaCode?: number } = {
     limit: 1,
     smsEnabled: true,
     voiceEnabled: true,
   };
 
   if (areaCode) {
-    searchParams.areaCode = areaCode;
+    searchParams.areaCode = parseInt(areaCode, 10);
   }
 
   const availableNumbers = await client
