@@ -401,8 +401,12 @@ export default function LandingPage() {
               <div className="space-y-4">
                 <div className="flex justify-end">
                   <div className="sms-bubble-out max-w-[80%]">
-                    <div className="bg-ghost-border rounded-lg h-32 w-full mb-2 flex items-center justify-center">
-                      <Image className="w-8 h-8 text-ghost-muted" />
+                    <div className="rounded-lg h-32 w-full mb-2 overflow-hidden">
+                      <img
+                        src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop&q=80"
+                        alt="Modern kitchen renovation"
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <p className="text-sm">post this to instagram</p>
                   </div>
