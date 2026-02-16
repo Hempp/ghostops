@@ -9,9 +9,10 @@ import ConversationThread from '@/components/chat/ConversationThread'
 import InvoiceTracker from '@/components/invoices/InvoiceTracker'
 import ContentCalendar from '@/components/calendar/ContentCalendar'
 import SettingsPanel from '@/components/settings/SettingsPanel'
-import CoFounderChat from '@/components/cofounder/CoFounderChat'
+import CoFounderDashboard from '@/components/cofounder/CoFounderDashboard'
 import KeyboardShortcutsHelp from '@/components/ui/KeyboardShortcutsHelp'
 import { SectionErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { NotificationToast } from '@/components/notifications'
 import { getStats } from '@/lib/supabase'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useAuth } from '@/components/auth/AuthProvider'
@@ -129,7 +130,11 @@ export default function Dashboard() {
         onViewChange={setActiveView}
         selectedConversation={selectedConversation}
         onBackToList={() => setSelectedConversation(null)}
+        businessId={businessId}
       />
+
+      {/* Real-time notification toasts */}
+      <NotificationToast businessId={businessId} />
 
       {/* Keyboard shortcuts help modal */}
       {showShortcuts && (
@@ -155,7 +160,7 @@ export default function Dashboard() {
 
         {activeView === 'cofounder' && (
           <SectionErrorBoundary section="AI Co-Founder">
-            <CoFounderChat businessId={businessId} />
+            <CoFounderDashboard businessId={businessId} />
           </SectionErrorBoundary>
         )}
 

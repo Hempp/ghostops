@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
+import { NotificationBell } from '@/components/notifications'
 
 type View = 'dashboard' | 'cofounder' | 'conversations' | 'invoices' | 'calendar' | 'settings'
 
@@ -21,6 +22,7 @@ interface SidebarProps {
   onViewChange: (view: View) => void
   selectedConversation?: string | null
   onBackToList?: () => void
+  businessId?: string | null
 }
 
 const navItems: { id: View; label: string; icon: React.ElementType }[] = [
@@ -32,9 +34,12 @@ const navItems: { id: View; label: string; icon: React.ElementType }[] = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
-export default function Sidebar({ activeView, onViewChange, selectedConversation, onBackToList }: SidebarProps) {
-  const { user, signOut } = useAuth()
+export default function Sidebar({ activeView, onViewChange, selectedConversation, onBackToList, businessId }: SidebarProps) {
+  const { user, signOut, businessId: authBusinessId } = useAuth()
   const router = useRouter()
+
+  // Use provided businessId or fall back to auth context
+  const currentBusinessId = businessId ?? authBusinessId
 
   const handleSignOut = async () => {
     await signOut()
@@ -45,14 +50,17 @@ export default function Sidebar({ activeView, onViewChange, selectedConversation
   const DesktopSidebar = () => (
     <aside className="hidden md:flex w-64 bg-ghost-card border-r border-ghost-border flex-col">
       <div className="p-6 border-b border-ghost-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
-            <Ghost className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
+              <Ghost className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="font-serif text-xl text-white">GhostOps</h1>
+              <p className="text-xs text-ghost-muted">AI Employee</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-serif text-xl text-white">GhostOps</h1>
-            <p className="text-xs text-ghost-muted">AI Employee</p>
-          </div>
+          <NotificationBell businessId={currentBusinessId} />
         </div>
       </div>
 
