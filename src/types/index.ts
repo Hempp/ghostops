@@ -193,6 +193,34 @@ export interface DailyStats {
   avg_rating: number | null;
 }
 
+export interface OwnerConversation {
+  id: string;
+  business_id: string;
+  owner_phone: string;
+  context: { last_topic?: string; pending_action?: string };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OwnerMessage {
+  id: string;
+  business_id: string;
+  direction: 'inbound' | 'outbound';
+  content: string;
+  ai_generated: boolean;
+  created_at: string;
+}
+
+export interface BusinessIntelligence {
+  weeklyStats: DailyStats[];
+  unpaidInvoices: Invoice[];
+  recentLeads: Lead[];
+  todaysAppointments: Appointment[];
+  recentReviews: Review[];
+  pendingPosts: SocialPost[];
+  monthlyRevenue: number;
+}
+
 // Webhook Payloads
 export interface TwilioSmsWebhook {
   MessageSid: string;

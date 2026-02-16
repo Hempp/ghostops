@@ -394,4 +394,126 @@ function cleanResponseForSMS(text: string): string {
     .trim();
 }
 
+// Co-Founder AI - Strategic business partner for owners
+export async function generateCofounderResponse(
+  business: Business,
+  ownerMessage: string,
+  recentMessages: Array<{ direction: 'inbound' | 'outbound'; content: string }>,
+  businessIntelligence: {
+    weeklyStats: Array<{ date: string; new_leads: number; messages_sent: number; messages_received: number; revenue_cents: number; invoices_sent: number; invoices_paid: number }>;
+    unpaidInvoices: Array<{ contact_name?: string; amount_cents: number; sent_at: string; status: string }>;
+    recentLeads: Array<{ name?: string; phone: string; source: string; status: string; created_at: string }>;
+    todaysAppointments: Array<{ scheduled_at: string; contact_name?: string; service?: string }>;
+    recentReviews: Array<{ rating: number; content?: string; author_name?: string }>;
+    pendingPosts: Array<{ content: string; status: string }>;
+    monthlyRevenue: number;
+  }
+): Promise<{ message: string; suggestedActions?: string[] }> {
+
+  // Build business context summary
+  const weeklyLeads = businessIntelligence.weeklyStats.reduce((sum, s) => sum + (s.new_leads || 0), 0);
+  const weeklyMessages = businessIntelligence.weeklyStats.reduce((sum, s) => sum + (s.messages_sent || 0) + (s.messages_received || 0), 0);
+  const weeklyRevenue = businessIntelligence.weeklyStats.reduce((sum, s) => sum + (s.revenue_cents || 0), 0);
+
+  const unpaidTotal = businessIntelligence.unpaidInvoices.reduce((sum, i) => sum + i.amount_cents, 0);
+  const avgRating = businessIntelligence.recentReviews.length > 0
+    ? businessIntelligence.recentReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / businessIntelligence.recentReviews.length
+    : null;
+
+  const appointmentsList = businessIntelligence.todaysAppointments
+    .map(a => {
+      const time = new Date(a.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return `${time} - ${a.contact_name || 'Customer'}${a.service ? ` (${a.service})` : ''}`;
+    })
+    .join('; ') || 'None';
+
+  const unpaidList = businessIntelligence.unpaidInvoices.slice(0, 5)
+    .map(i => {
+      const days = Math.floor((Date.now() - new Date(i.sent_at).getTime()) / 86400000);
+      return `${i.contact_name || 'Unknown'}: $${(i.amount_cents / 100).toFixed(0)} (${days}d)`;
+    })
+    .join('; ') || 'None';
+
+  const recentLeadsList = businessIntelligence.recentLeads.slice(0, 5)
+    .map(l => `${l.name || l.phone} (${l.source}, ${l.status})`)
+    .join('; ') || 'None this week';
+
+  const systemPrompt = `You are the AI co-founder and business partner for "${business.name}" (${business.business_type || 'local business'}).
+
+YOUR ROLE:
+- You are a strategic partner, not just an assistant
+- You have access to real-time business data
+- You provide actionable insights and recommendations
+- You speak directly and confidently, like a trusted co-founder
+- You celebrate wins and flag concerns proactively
+- Keep responses concise for SMS (under 300 chars when possible, max 2-3 short texts worth)
+
+CURRENT BUSINESS DATA:
+📊 This Week: ${weeklyLeads} leads, ${weeklyMessages} messages, $${(weeklyRevenue / 100).toFixed(0)} revenue
+💰 Unpaid Invoices: ${businessIntelligence.unpaidInvoices.length} totaling $${(unpaidTotal / 100).toFixed(0)}
+   Details: ${unpaidList}
+📅 Today's Schedule: ${appointmentsList}
+⭐ Recent Reviews: ${businessIntelligence.recentReviews.length} reviews${avgRating ? ` (${avgRating.toFixed(1)} avg)` : ''}
+🎯 Recent Leads: ${recentLeadsList}
+📱 Pending Posts: ${businessIntelligence.pendingPosts.length} awaiting approval
+💵 Monthly Revenue: $${(businessIntelligence.monthlyRevenue / 100).toFixed(0)}
+
+CAPABILITIES YOU CAN SUGGEST:
+- Send invoice reminders ("Should I send [name] a reminder?")
+- Follow up with leads ("Want me to text [lead] back?")
+- Check specific metrics ("Your response time this week averaged X")
+- Strategic advice based on data patterns
+- Schedule social posts
+- Review customer conversations
+
+RESPONSE STYLE:
+- Direct and confident
+- Data-backed when relevant
+- Action-oriented
+- Casual but professional
+- Use numbers to back up points`;
+
+  const messages = recentMessages.slice(-6).map(m => ({
+    role: m.direction === 'inbound' ? 'user' as const : 'assistant' as const,
+    content: m.content
+  }));
+
+  if (!messages.some(m => m.content === ownerMessage)) {
+    messages.push({ role: 'user' as const, content: ownerMessage });
+  }
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 400,
+      system: systemPrompt,
+      messages
+    });
+
+    const textContent = response.content.find(c => c.type === 'text');
+    const responseText = textContent && textContent.type === 'text' ? textContent.text : '';
+
+    return {
+      message: cleanResponseForSMS(responseText),
+      suggestedActions: parseCofounderActions(responseText)
+    };
+  } catch (error) {
+    console.error('Co-founder AI error:', error);
+    return {
+      message: "Hit a snag pulling your data. Try again in a sec, or text 'status' for a quick summary."
+    };
+  }
+}
+
+function parseCofounderActions(response: string): string[] | undefined {
+  const actions: string[] = [];
+  const lower = response.toLowerCase();
+
+  if (lower.includes('send') && lower.includes('reminder')) actions.push('send_reminder');
+  if (lower.includes('follow up') || lower.includes('text them')) actions.push('follow_up_lead');
+  if (lower.includes('schedule') && lower.includes('post')) actions.push('schedule_post');
+
+  return actions.length > 0 ? actions : undefined;
+}
+
 export { anthropic };

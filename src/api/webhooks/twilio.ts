@@ -1,9 +1,9 @@
 // Twilio Webhook Handlers - VELOCITY Communications
 import { Router, Request, Response } from 'express';
-import { supabase, getBusinessByTwilioNumber, getBusinessByOwnerPhone, getOrCreateContact, getOrCreateConversation, getRecentMessages, saveMessage, recordMissedCall, createLead, markLeadResponded, updateDailyStats } from '../../lib/supabase.js';
+import { supabase, getBusinessByTwilioNumber, getBusinessByOwnerPhone, getOrCreateContact, getOrCreateConversation, getRecentMessages, saveMessage, recordMissedCall, createLead, markLeadResponded, updateDailyStats, getOrCreateOwnerConversation, getOwnerMessages, saveOwnerMessage, getBusinessIntelligence } from '../../lib/supabase.js';
 import { sendSms, formatPhoneNumber } from '../../lib/sms/twilio.js';
-import { generateCustomerResponse, generateMissedCallTextback, generateSocialPostOptions } from '../../lib/ai/claude.js';
-import { parseOwnerCommand, getHelpMessage, formatStatusMessage, formatUnpaidList, formatPostOptions } from '../../lib/commands/parser.js';
+import { generateCustomerResponse, generateMissedCallTextback, generateSocialPostOptions, generateCofounderResponse } from '../../lib/ai/claude.js';
+import { parseOwnerCommand, getHelpMessage, formatStatusMessage, formatUnpaidList, formatPostOptions, isConversationalMessage } from '../../lib/commands/parser.js';
 import { createInvoicePaymentLink } from '../../lib/payments/stripe.js';
 import type { TwilioSmsWebhook, TwilioVoiceWebhook, Business } from '../../types/index.js';
 
@@ -51,6 +51,47 @@ router.post('/sms', async (req: Request, res: Response) => {
 
 // Handle owner commands
 async function handleOwnerMessage(business: Business, message: string, mediaUrls: string[]): Promise<void> {
+  // Check if message is conversational (co-founder AI mode)
+  if (isConversationalMessage(message)) {
+    // Get owner conversation history
+    const recentMessages = await getOwnerMessages(business.id, 10);
+
+    // Get business intelligence for context
+    const intelligence = await getBusinessIntelligence(business.id);
+
+    // Save inbound owner message
+    await saveOwnerMessage({
+      business_id: business.id,
+      direction: 'inbound',
+      content: message
+    });
+
+    // Generate co-founder AI response
+    const cofounderResponse = await generateCofounderResponse(
+      business,
+      message,
+      recentMessages,
+      intelligence
+    );
+
+    // Send response via SMS
+    await sendSms({
+      to: business.owner_phone,
+      from: business.twilio_number!,
+      body: cofounderResponse.message
+    });
+
+    // Save outbound message
+    await saveOwnerMessage({
+      business_id: business.id,
+      direction: 'outbound',
+      content: cofounderResponse.message,
+      ai_generated: true
+    });
+
+    return;
+  }
+
   // Check if owner is responding to a social post flow
   const { data: pendingPost } = await supabase
     .from('social_posts')

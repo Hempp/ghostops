@@ -75,3 +75,32 @@ export function formatUnpaidList(invoices: Array<{
 export function formatPostOptions(options: string[]): string {
   return options.map((opt, i) => (i + 1) + ') ' + opt.substring(0, 80) + '...').join('\n') + '\nReply 1, 2, or 3';
 }
+
+// Determine if an owner message is conversational (for co-founder AI) or a command
+export function isConversationalMessage(message: string): boolean {
+  const text = message.trim().toLowerCase();
+
+  // Exact command matches
+  const exactCommands = ['pause', 'stop', 'resume', 'start', 'status', 'stats', 'help', '?', 'unpaid', 'overdue'];
+  if (exactCommands.includes(text)) {
+    return false;
+  }
+
+  // Commands that start with specific keywords
+  if (text.startsWith('invoice') || text.startsWith('post') || text.startsWith('schedule')) {
+    return false;
+  }
+
+  // Stats with period pattern: stats today/week/month
+  if (/^stats?\s+(today|week|month)$/.test(text)) {
+    return false;
+  }
+
+  // Number 1-3 for post selection
+  if (/^[1-3]$/.test(text)) {
+    return false;
+  }
+
+  // Everything else is conversational
+  return true;
+}
