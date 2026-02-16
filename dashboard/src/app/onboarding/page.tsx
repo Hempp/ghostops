@@ -80,7 +80,7 @@ const SERVICE_SUGGESTIONS: Record<string, string[]> = {
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { user, businessId } = useAuth()
+  const { user, businessId, loading } = useAuth()
   const [currentStep, setCurrentStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState<OnboardingData>({
@@ -96,10 +96,10 @@ export default function OnboardingPage() {
 
   // Redirect if not logged in
   useEffect(() => {
-    if (!user) {
+    if (!loading && !user) {
       router.push('/login')
     }
-  }, [user, router])
+  }, [loading, user, router])
 
   const updateData = (updates: Partial<OnboardingData>) => {
     setData(prev => ({ ...prev, ...updates }))
@@ -216,6 +216,18 @@ export default function OnboardingPage() {
       default:
         return null
     }
+  }
+
+  // Show loading while auth is being checked
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-ghost-bg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+          <p className="text-ghost-muted">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
