@@ -4,8 +4,8 @@ import { useState } from 'react'
 import {
   Ghost, Phone, MessageSquare, DollarSign, Star, Calendar,
   Zap, Clock, TrendingUp, CheckCircle, ArrowRight, Menu, X,
-  Instagram, Facebook, Mail, PhoneCall, Send, Bot, Sparkles,
-  Linkedin, Youtube, Sun, Image, BarChart3, Loader2
+  Instagram, Facebook, PhoneCall, Send, Bot, Sparkles,
+  Sun, Image, BarChart3, Loader2
 } from 'lucide-react'
 
 export default function LandingPage() {
@@ -88,8 +88,8 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-xl text-ghost-muted mb-8 leading-relaxed">
-                Run your entire business from text messages. Calendar, email, invoices,
-                social media — all via SMS. Your AI handles everything while you do the real work.
+                Run your entire business from text messages. Invoices, social media,
+                missed call recovery — all via SMS. Your AI handles everything while you do the real work.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 mb-12">
@@ -176,12 +176,12 @@ export default function LandingPage() {
                     </div>
                     <div className="flex justify-end">
                       <div className="sms-bubble-out max-w-[80%]">
-                        <p className="text-sm">email my accountant last month&apos;s invoices</p>
+                        <p className="text-sm">post my latest kitchen photo to instagram</p>
                       </div>
                     </div>
                     <div className="flex justify-start">
                       <div className="sms-bubble-in max-w-[85%]">
-                        <p className="text-sm">Sent. 14 invoices totaling $18,400 attached as PDF to mike@accounting.com</p>
+                        <p className="text-sm">Done! Posted to Instagram with caption: &quot;Another stunning kitchen transformation!&quot; Want me to cross-post to Facebook too?</p>
                         <div className="flex items-center gap-1 mt-1 opacity-70">
                           <Bot className="w-3 h-3" /><span className="text-xs">AI</span>
                         </div>
@@ -218,12 +218,12 @@ export default function LandingPage() {
 
               <div className="absolute -left-5 bottom-32 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center">
-                    <Mail className="w-5 h-5 text-purple-400" />
+                  <div className="w-10 h-10 bg-orange-600/20 rounded-lg flex items-center justify-center">
+                    <PhoneCall className="w-5 h-5 text-orange-400" />
                   </div>
                   <div>
-                    <div className="text-white font-medium text-sm">Email Sent</div>
-                    <div className="text-purple-400 text-xs">To accountant</div>
+                    <div className="text-white font-medium text-sm">Missed Call Saved</div>
+                    <div className="text-orange-400 text-xs">Lead texted back</div>
                   </div>
                 </div>
               </div>
@@ -278,16 +278,9 @@ export default function LandingPage() {
               {
                 icon: Calendar,
                 title: 'Calendar & Scheduling',
-                description: '"What\'s my day" → see your schedule. "Add meeting Monday 2pm" → done. Syncs with Google Calendar.',
+                description: '"What\'s my day" → see your schedule. Track appointments via text. Google Calendar sync coming soon.',
                 color: 'text-blue-400',
                 bg: 'bg-blue-600/20'
-              },
-              {
-                icon: Mail,
-                title: 'Email Management',
-                description: '"What did Sarah email me" → summary. "Email her back about the timeline" → sent. Full Gmail integration.',
-                color: 'text-purple-400',
-                bg: 'bg-purple-600/20'
               },
               {
                 icon: DollarSign,
@@ -299,7 +292,7 @@ export default function LandingPage() {
               {
                 icon: Image,
                 title: 'AI Social Media Manager',
-                description: 'Send a photo → AI generates posts for IG, FB, LinkedIn, TikTok, YouTube. Approve via text.',
+                description: 'Send a photo → AI generates posts for Instagram & Facebook. Approve via text. More platforms coming soon.',
                 color: 'text-pink-400',
                 bg: 'bg-pink-600/20'
               },
@@ -368,22 +361,25 @@ export default function LandingPage() {
 
               <p className="text-xl text-ghost-muted mb-8">
                 Text a photo of your work. AI generates platform-perfect posts for
-                Instagram, Facebook, LinkedIn, TikTok, and YouTube — with the right
-                format, hashtags, and tone for each.
+                Instagram and Facebook — with the right format, hashtags, and tone for each.
               </p>
 
               <div className="space-y-4">
                 {[
                   { platform: 'Instagram', desc: 'Square crops, trending hashtags, Reels-ready captions' },
                   { platform: 'Facebook', desc: 'Community-focused, shareable, engagement-optimized' },
-                  { platform: 'LinkedIn', desc: 'Professional tone, industry hashtags, thought leadership' },
-                  { platform: 'TikTok', desc: 'Hook-driven, trendy, vertical video scripts' },
-                  { platform: 'YouTube', desc: 'Full package: title, description, tags, timestamps' },
+                  { platform: 'LinkedIn', desc: 'Coming soon — professional tone, industry hashtags', comingSoon: true },
+                  { platform: 'TikTok', desc: 'Coming soon — hook-driven, trendy, vertical video scripts', comingSoon: true },
+                  { platform: 'YouTube', desc: 'Coming soon — title, description, tags, timestamps', comingSoon: true },
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <CheckCircle className="w-5 h-5 text-emerald-400 mt-0.5" />
+                    {item.comingSoon ? (
+                      <Clock className="w-5 h-5 text-ghost-muted mt-0.5" />
+                    ) : (
+                      <CheckCircle className="w-5 h-5 text-emerald-400 mt-0.5" />
+                    )}
                     <div>
-                      <span className="text-white font-medium">{item.platform}:</span>
+                      <span className={item.comingSoon ? "text-ghost-muted font-medium" : "text-white font-medium"}>{item.platform}:</span>
                       <span className="text-ghost-muted"> {item.desc}</span>
                     </div>
                   </div>
@@ -558,9 +554,7 @@ export default function LandingPage() {
               <ul className="space-y-3 mb-8">
                 {[
                   'Everything in Starter',
-                  'Google Calendar sync',
-                  'Gmail read/send',
-                  'AI Social Media Manager',
+                  'AI Social Media (IG + FB)',
                   'Review engine',
                   'Unlimited AI messages',
                   'Web dashboard'
@@ -676,7 +670,7 @@ export default function LandingPage() {
               },
               {
                 q: "How does the 2-minute setup work?",
-                a: "You text your GhostOps number. It asks your business name, email, and industry. You tap one link to connect Google Calendar (optional). That's it. No forms, no calls, no app downloads."
+                a: "You text your GhostOps number. It asks your business name, email, and industry. That's it. No forms, no calls, no app downloads. Google Calendar sync is coming soon."
               },
               {
                 q: "What if I need to do something the AI can't handle?",
@@ -684,11 +678,7 @@ export default function LandingPage() {
               },
               {
                 q: "How does social media posting work?",
-                a: "Text or MMS a photo to your GhostOps number. AI generates platform-specific posts for Instagram, Facebook, LinkedIn, TikTok, or YouTube — with proper formatting, hashtags, and tone for each. You approve or edit via text, then it posts."
-              },
-              {
-                q: "Can it really manage my email?",
-                a: "Yes. 'What did John email me about' gives you a summary. 'Email him back saying the tile arrives Friday' drafts and sends it. Full Gmail integration. You stay in control — it shows you what it's sending."
+                a: "Text or MMS a photo to your GhostOps number. AI generates platform-specific posts for Instagram and Facebook — with proper formatting, hashtags, and tone for each. You approve or edit via text, then it posts. LinkedIn, TikTok, and YouTube support coming soon."
               },
               {
                 q: "Is my data secure?",

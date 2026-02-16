@@ -1,13 +1,16 @@
 'use client'
 
-import { 
-  LayoutDashboard, 
-  MessageSquare, 
-  Receipt, 
-  Calendar, 
+import {
+  LayoutDashboard,
+  MessageSquare,
+  Receipt,
+  Calendar,
   Settings,
-  Ghost
+  Ghost,
+  LogOut
 } from 'lucide-react'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { useRouter } from 'next/navigation'
 
 type View = 'dashboard' | 'conversations' | 'invoices' | 'calendar' | 'settings'
 
@@ -25,6 +28,14 @@ const navItems: { id: View; label: string; icon: React.ElementType }[] = [
 ]
 
 export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
+  const { user, signOut } = useAuth()
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    await signOut()
+    router.push('/login')
+  }
+
   return (
     <aside className="w-64 bg-ghost-card border-r border-ghost-border flex flex-col">
       <div className="p-6 border-b border-ghost-border">
@@ -65,7 +76,7 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
         </ul>
       </nav>
       
-      <div className="p-4 border-t border-ghost-border">
+      <div className="p-4 border-t border-ghost-border space-y-3">
         <div className="bg-emerald-600/10 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -74,6 +85,22 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
           <p className="text-xs text-ghost-muted">
             Ghost is handling customer messages
           </p>
+        </div>
+
+        {/* User info and sign out */}
+        <div className="flex items-center justify-between">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-ghost-muted truncate">
+              {user?.email || 'User'}
+            </p>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="p-2 text-ghost-muted hover:text-white hover:bg-ghost-border/50 rounded-lg transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>

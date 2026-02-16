@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Sidebar from '@/components/ui/Sidebar'
 import StatsOverview from '@/components/dashboard/StatsOverview'
 import ConversationsList from '@/components/chat/ConversationsList'
@@ -11,18 +12,26 @@ import SettingsPanel from '@/components/settings/SettingsPanel'
 import KeyboardShortcutsHelp from '@/components/ui/KeyboardShortcutsHelp'
 import { getStats } from '@/lib/supabase'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { Loader2, AlertCircle } from 'lucide-react'
 
 type View = 'dashboard' | 'conversations' | 'invoices' | 'calendar' | 'settings'
 
 export default function Dashboard() {
+  const router = useRouter()
+  const { user, businessId, loading } = useAuth()
   const [activeView, setActiveView] = useState<View>('dashboard')
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [todayTaskCount, setTodayTaskCount] = useState<number | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Demo business ID - in production, get from auth
-  const businessId = 'demo-business-id'
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+    }
+  }, [loading, user, router])
 
   // Focus search input callback
   const handleSearch = useCallback(() => {
@@ -46,6 +55,7 @@ export default function Dashboard() {
   // Fetch today's task count for the header
   useEffect(() => {
     async function loadTaskCount() {
+      if (!businessId) return
       try {
         const stats = await getStats(businessId, 1)
         if (stats.length > 0) {
@@ -78,6 +88,38 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-ghost-bg">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-ghost-accent animate-spin" />
+          <p className="text-ghost-muted">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render if not authenticated (redirect is happening)
+  if (!user) {
+    return null
+  }
+
+  // Show error if user is authenticated but has no business
+  if (!businessId) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-ghost-bg">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center p-6">
+          <AlertCircle className="w-12 h-12 text-yellow-500" />
+          <h1 className="text-xl font-serif text-white">No Business Found</h1>
+          <p className="text-ghost-muted">
+            Your account is not associated with any business. Please contact support or ensure your business account is properly set up.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen">
       <Sidebar activeView={activeView} onViewChange={setActiveView} />
@@ -101,21 +143,21 @@ export default function Dashboard() {
             <StatsOverview businessId={businessId} />
           </div>
         )}
-        
+
         {activeView === 'conversations' && (
           <div className="flex h-full">
-            <ConversationsList 
+            <ConversationsList
               businessId={businessId}
               selectedId={selectedConversation}
               onSelect={setSelectedConversation}
             />
-            <ConversationThread 
+            <ConversationThread
               conversationId={selectedConversation}
               businessId={businessId}
             />
           </div>
         )}
-        
+
         {activeView === 'invoices' && (
           <div className="p-6 h-full overflow-y-auto">
             <header className="mb-8">
@@ -125,7 +167,7 @@ export default function Dashboard() {
             <InvoiceTracker businessId={businessId} />
           </div>
         )}
-        
+
         {activeView === 'calendar' && (
           <div className="p-6 h-full overflow-y-auto">
             <header className="mb-8">

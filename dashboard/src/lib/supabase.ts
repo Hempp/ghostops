@@ -1,14 +1,79 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Create a browser client for client-side usage
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 
 // Flag to check if Supabase is properly configured
 export const isSupabaseConfigured =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+// Auth helper functions
+export async function signInWithEmail(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function signUp(email: string, password: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
+}
+
+export async function getSession() {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  return data.session
+}
+
+export async function getCurrentUser() {
+  const { data, error } = await supabase.auth.getUser()
+  if (error) throw error
+  return data.user
+}
+
+// Get the business ID for the current user
+export async function getUserBusinessId(): Promise<string | null> {
+  const user = await getCurrentUser()
+  if (!user) return null
+
+  const { data, error } = await supabase
+    .from('business_users')
+    .select('business_id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (error) {
+    console.error('Error fetching user business:', error)
+    return null
+  }
+
+  return data?.business_id || null
+}
+
+// Business user type
+export interface BusinessUser {
+  id: string
+  user_id: string
+  business_id: string
+  role: 'owner' | 'admin' | 'member'
+  created_at: string
+}
 
 // Types matching the database schema
 export interface Conversation {
@@ -259,4 +324,151 @@ export function subscribeToStats(businessId: string, callback: (stats: DailyStat
       callback(payload.new as DailyStats)
     })
     .subscribe()
+}
+
+// Business Settings Types
+export interface BusinessSettings {
+  // AI behavior settings (stored in features_enabled)
+  aiEnabled: boolean
+  autoReply: boolean
+  workingHoursOnly: boolean
+  // Notification settings (stored in settings JSONB)
+  notifyOnNewLead: boolean
+  notifyOnPayment: boolean
+  notifyOnMissedCall: boolean
+  // Appearance settings (stored in settings JSONB)
+  darkMode: boolean
+  soundEnabled: boolean
+}
+
+export interface Business {
+  id: string
+  name: string | null
+  owner_email: string | null
+  owner_name: string | null
+  owner_phone: string | null
+  is_paused: boolean
+  features_enabled: {
+    missed_call_textback?: boolean
+    speed_to_lead?: boolean
+    review_engine?: boolean
+    sms_invoicing?: boolean
+    social_posting?: boolean
+    morning_briefing?: boolean
+    ai_enabled?: boolean
+    auto_reply?: boolean
+    working_hours_only?: boolean
+  }
+  settings: {
+    notify_on_new_lead?: boolean
+    notify_on_payment?: boolean
+    notify_on_missed_call?: boolean
+    dark_mode?: boolean
+    sound_enabled?: boolean
+  } | null
+  created_at: string
+  updated_at: string
+}
+
+export async function getBusiness(businessId: string): Promise<Business | null> {
+  const { data, error } = await supabase
+    .from('businesses')
+    .select('*')
+    .eq('id', businessId)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') return null // Not found
+    throw error
+  }
+  return data as Business
+}
+
+export async function getBusinessSettings(businessId: string): Promise<BusinessSettings> {
+  const business = await getBusiness(businessId)
+
+  if (!business) {
+    // Return defaults if business not found
+    return {
+      aiEnabled: true,
+      autoReply: true,
+      workingHoursOnly: false,
+      notifyOnNewLead: true,
+      notifyOnPayment: true,
+      notifyOnMissedCall: true,
+      darkMode: true,
+      soundEnabled: false,
+    }
+  }
+
+  const features = business.features_enabled || {}
+  const settings = business.settings || {}
+
+  return {
+    // AI behavior from features_enabled
+    aiEnabled: features.ai_enabled ?? true,
+    autoReply: features.auto_reply ?? features.speed_to_lead ?? true,
+    workingHoursOnly: features.working_hours_only ?? false,
+    // Notifications from settings
+    notifyOnNewLead: settings.notify_on_new_lead ?? true,
+    notifyOnPayment: settings.notify_on_payment ?? true,
+    notifyOnMissedCall: settings.notify_on_missed_call ?? true,
+    // Appearance from settings
+    darkMode: settings.dark_mode ?? true,
+    soundEnabled: settings.sound_enabled ?? false,
+  }
+}
+
+export async function updateBusinessSettings(
+  businessId: string,
+  updates: Partial<BusinessSettings>
+): Promise<void> {
+  // First get current business data
+  const business = await getBusiness(businessId)
+  if (!business) {
+    throw new Error('Business not found')
+  }
+
+  const currentFeatures = business.features_enabled || {}
+  const currentSettings = business.settings || {}
+
+  // Build updated features_enabled object
+  const newFeatures = { ...currentFeatures }
+  if (updates.aiEnabled !== undefined) newFeatures.ai_enabled = updates.aiEnabled
+  if (updates.autoReply !== undefined) newFeatures.auto_reply = updates.autoReply
+  if (updates.workingHoursOnly !== undefined) newFeatures.working_hours_only = updates.workingHoursOnly
+
+  // Build updated settings object
+  const newSettings = { ...currentSettings }
+  if (updates.notifyOnNewLead !== undefined) newSettings.notify_on_new_lead = updates.notifyOnNewLead
+  if (updates.notifyOnPayment !== undefined) newSettings.notify_on_payment = updates.notifyOnPayment
+  if (updates.notifyOnMissedCall !== undefined) newSettings.notify_on_missed_call = updates.notifyOnMissedCall
+  if (updates.darkMode !== undefined) newSettings.dark_mode = updates.darkMode
+  if (updates.soundEnabled !== undefined) newSettings.sound_enabled = updates.soundEnabled
+
+  const { error } = await supabase
+    .from('businesses')
+    .update({
+      features_enabled: newFeatures,
+      settings: newSettings,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', businessId)
+
+  if (error) throw error
+}
+
+export async function updateBusinessPausedStatus(
+  businessId: string,
+  isPaused: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from('businesses')
+    .update({
+      is_paused: isPaused,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', businessId)
+
+  if (error) throw error
 }

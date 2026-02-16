@@ -1,7 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Instagram, Facebook, Clock, CheckCircle, Heart, MessageCircle, Share2, PlusCircle } from 'lucide-react'
+import { Instagram, Facebook, Clock, CheckCircle, Heart, MessageCircle, Share2, PlusCircle, Lock } from 'lucide-react'
+
+// Supported platforms (Instagram and Facebook only - others coming soon)
+const SUPPORTED_PLATFORMS = ['instagram', 'facebook']
 import { toast } from 'sonner'
 import { getSocialPosts, subscribeToSocialPosts, type SocialPost } from '@/lib/supabase'
 import { StatCardSkeleton, ContentCardSkeleton } from '@/components/ui/Skeleton'
@@ -115,6 +118,42 @@ export default function ContentCalendar({ businessId }: ContentCalendarProps) {
             </div>
           )
         })}
+      </div>
+
+      {/* Supported Platforms Notice */}
+      <div className="bg-ghost-card border border-ghost-border rounded-2xl p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-ghost-muted">Active platforms:</span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-pink-600/20 rounded-full text-xs font-medium text-pink-400">
+                <Instagram className="w-3 h-3" />
+                Instagram
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-600/20 rounded-full text-xs font-medium text-blue-400">
+                <Facebook className="w-3 h-3" />
+                Facebook
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-ghost-muted">Coming soon:</span>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ghost-border/50 rounded-full text-xs text-ghost-muted">
+                <Lock className="w-3 h-3" />
+                LinkedIn
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ghost-border/50 rounded-full text-xs text-ghost-muted">
+                <Lock className="w-3 h-3" />
+                TikTok
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-ghost-border/50 rounded-full text-xs text-ghost-muted">
+                <Lock className="w-3 h-3" />
+                YouTube
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Posts Grid */}
