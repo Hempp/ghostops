@@ -9,7 +9,9 @@ interface AuthContextType {
   session: Session | null
   businessId: string | null
   loading: boolean
+  needsOnboarding: boolean
   signOut: () => Promise<void>
+  refreshBusinessData: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,7 +19,9 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   businessId: null,
   loading: true,
+  needsOnboarding: false,
   signOut: async () => {},
+  refreshBusinessData: async () => {},
 })
 
 export function useAuth() {
@@ -36,7 +40,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [businessId, setBusinessId] = useState<string | null>(null)
+  const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  const checkOnboardingStatus = async (bizId: string) => {
+    try {
+      const { data: business } = await supabase
+        .from('businesses')
+        .select('onboarding_complete')
+        .eq('id', bizId)
+        .single()
+
+      return !business?.onboarding_complete
+    } catch {
+      return false
+    }
+  }
+
+  const fetchBusinessData = async () => {
+    const bizId = await getUserBusinessId()
+    setBusinessId(bizId)
+
+    if (bizId) {
+      const needsSetup = await checkOnboardingStatus(bizId)
+      setNeedsOnboarding(needsSetup)
+    }
+  }
 
   useEffect(() => {
     // Get initial session
@@ -47,9 +76,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(initialSession?.user ?? null)
 
         if (initialSession?.user) {
-          // Fetch business ID for the user
-          const bizId = await getUserBusinessId()
-          setBusinessId(bizId)
+          await fetchBusinessData()
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
@@ -67,11 +94,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(newSession?.user ?? null)
 
         if (newSession?.user) {
-          // Fetch business ID when user signs in
-          const bizId = await getUserBusinessId()
-          setBusinessId(bizId)
+          await fetchBusinessData()
         } else {
           setBusinessId(null)
+          setNeedsOnboarding(false)
         }
 
         setLoading(false)
@@ -89,8 +115,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null)
       setSession(null)
       setBusinessId(null)
+      setNeedsOnboarding(false)
     } catch (error) {
       console.error('Error signing out:', error)
+    }
+  }
+
+  const refreshBusinessData = async () => {
+    if (user) {
+      await fetchBusinessData()
     }
   }
 
@@ -101,7 +134,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         session,
         businessId,
         loading,
+        needsOnboarding,
         signOut: handleSignOut,
+        refreshBusinessData,
       }}
     >
       {children}

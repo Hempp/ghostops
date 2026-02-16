@@ -22,7 +22,7 @@ type View = 'dashboard' | 'cofounder' | 'conversations' | 'invoices' | 'calendar
 
 export default function Dashboard() {
   const router = useRouter()
-  const { user, businessId, loading } = useAuth()
+  const { user, businessId, loading, needsOnboarding } = useAuth()
   const [activeView, setActiveView] = useState<View>('dashboard')
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [todayTaskCount, setTodayTaskCount] = useState<number | null>(null)
@@ -35,6 +35,13 @@ export default function Dashboard() {
       router.push('/login')
     }
   }, [loading, user, router])
+
+  // Redirect to onboarding if business setup is incomplete
+  useEffect(() => {
+    if (!loading && user && needsOnboarding) {
+      router.push('/onboarding')
+    }
+  }, [loading, user, needsOnboarding, router])
 
   // Focus search input callback
   const handleSearch = useCallback(() => {
