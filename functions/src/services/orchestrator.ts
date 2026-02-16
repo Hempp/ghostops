@@ -43,6 +43,7 @@ type Intent =
   | 'missed_call_recovery'
   | 'review_request'
   | 'onboarding'
+  | 'cofounder_chat'
   | 'general_chat'
   | 'help'
 
