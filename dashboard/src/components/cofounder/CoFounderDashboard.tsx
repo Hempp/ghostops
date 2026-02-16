@@ -127,36 +127,36 @@ function SummaryCard({ data, index }: { data: SummaryCardData; index: number }) 
 
   return (
     <div
-      className={`group stat-card relative bg-ghost-card/80 backdrop-blur-sm border ${colors.border} rounded-2xl p-5
+      className={`group stat-card relative bg-ghost-card/80 backdrop-blur-sm border ${colors.border} rounded-xl md:rounded-2xl p-3 md:p-5
         hover:bg-ghost-card-hover hover:border-ghost-border-subtle
         transition-all duration-500 ease-out-expo cursor-default
         ${colors.glow} animate-fade-in-up`}
       style={{ animationDelay: `${index * 100}ms` }}
     >
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+      <div className="absolute inset-0 rounded-xl md:rounded-2xl bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
 
-      <div className="relative flex items-start justify-between mb-3">
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colors.bg}
+      <div className="relative flex items-start justify-between mb-2 md:mb-3">
+        <div className={`w-9 h-9 md:w-11 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center ${colors.bg}
           transition-transform duration-300 group-hover:scale-110`}>
-          <Icon className={`w-5 h-5 ${colors.text}`} />
+          <Icon className={`w-4 h-4 md:w-5 md:h-5 ${colors.text}`} />
         </div>
         {data.trend && (
-          <div className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full
+          <div className={`flex items-center gap-0.5 md:gap-1 text-[10px] md:text-xs font-medium px-1.5 md:px-2 py-0.5 md:py-1 rounded-full
             ${data.trend.value >= 0
               ? 'text-emerald-400 bg-emerald-500/10'
               : 'text-red-400 bg-red-500/10'}`}>
-            <TrendingUp className={`w-3 h-3 ${data.trend.value < 0 ? 'rotate-180' : ''}`} />
+            <TrendingUp className={`w-2.5 h-2.5 md:w-3 md:h-3 ${data.trend.value < 0 ? 'rotate-180' : ''}`} />
             {data.trend.value > 0 ? '+' : ''}{data.trend.value}
           </div>
         )}
       </div>
 
       <div className="relative">
-        <div className="text-3xl font-display font-bold text-white tracking-tight">{data.value}</div>
-        <div className="text-sm font-medium text-ghost-text mt-1">{data.label}</div>
+        <div className="text-2xl md:text-3xl font-display font-bold text-white tracking-tight">{data.value}</div>
+        <div className="text-xs md:text-sm font-medium text-ghost-text mt-0.5 md:mt-1 truncate">{data.label}</div>
         {data.subtext && (
-          <div className="text-xs text-ghost-muted mt-0.5">{data.subtext}</div>
+          <div className="text-[10px] md:text-xs text-ghost-muted mt-0.5 truncate">{data.subtext}</div>
         )}
       </div>
     </div>
@@ -226,21 +226,21 @@ function QuickActionCard({
   return (
     <button
       onClick={onClick}
-      className={`group flex items-center gap-3 p-3.5 ${colors.bg} border ${colors.border}
-        rounded-xl ${colors.hover} transition-all duration-300 ease-out-expo text-left w-full
+      className={`group flex items-center gap-2 md:gap-3 p-2.5 md:p-3.5 min-h-[48px] ${colors.bg} border ${colors.border}
+        rounded-lg md:rounded-xl ${colors.hover} transition-all duration-300 ease-out-expo text-left w-full
         hover:translate-y-[-2px] hover:shadow-premium active:translate-y-0 animate-fade-in-up`}
       style={{ animationDelay: `${400 + index * 75}ms` }}
     >
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${colors.bg}
+      <div className={`w-8 h-8 md:w-9 md:h-9 flex-shrink-0 rounded-lg flex items-center justify-center ${colors.bg}
         border ${colors.border} transition-transform duration-300 group-hover:scale-110`}>
-        <Icon className={`w-4 h-4 ${colors.text}`} />
+        <Icon className={`w-3.5 h-3.5 md:w-4 md:h-4 ${colors.text}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white group-hover:text-ghost-text transition-colors">{title}</p>
-        <p className="text-xs text-ghost-muted truncate">{description}</p>
+        <p className="text-xs md:text-sm font-semibold text-white group-hover:text-ghost-text transition-colors truncate">{title}</p>
+        <p className="text-[10px] md:text-xs text-ghost-muted truncate hidden sm:block">{description}</p>
       </div>
       <ChevronRight className="w-4 h-4 text-ghost-muted group-hover:text-ghost-text
-        group-hover:translate-x-1 transition-all duration-300" />
+        group-hover:translate-x-1 transition-all duration-300 flex-shrink-0 hidden md:block" />
     </button>
   )
 }
@@ -357,28 +357,28 @@ export default function CoFounderDashboard({ businessId }: CoFounderDashboardPro
   return (
     <div className="flex flex-col h-full bg-ghost-bg">
       {/* Premium Header with Summary Cards */}
-      <div className="p-6 border-b border-ghost-border bg-gradient-to-b from-ghost-card to-ghost-bg">
+      <div className="p-4 md:p-6 border-b border-ghost-border bg-gradient-to-b from-ghost-card to-ghost-bg">
         {/* Hero Title Row */}
-        <div className="flex items-center gap-4 mb-6 animate-fade-in">
-          <div className="relative">
-            <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl
+        <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6 animate-fade-in">
+          <div className="relative flex-shrink-0">
+            <div className="w-12 h-12 md:w-14 md:h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl md:rounded-2xl
               flex items-center justify-center shadow-glow">
-              <Brain className="w-7 h-7 text-white" />
+              <Brain className="w-6 h-6 md:w-7 md:h-7 text-white" />
             </div>
             {/* Pulse indicator */}
-            <div className="absolute -top-1 -right-1 w-4 h-4">
+            <div className="absolute -top-1 -right-1 w-3 h-3 md:w-4 md:h-4">
               <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
-              <span className="relative block w-4 h-4 rounded-full bg-emerald-400 border-2 border-ghost-bg" />
+              <span className="relative block w-3 h-3 md:w-4 md:h-4 rounded-full bg-emerald-400 border-2 border-ghost-bg" />
             </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-display font-bold text-white tracking-tight">AI Co-Founder</h2>
-            <p className="text-sm text-ghost-muted">Your strategic business partner, working 24/7</p>
+          <div className="min-w-0">
+            <h2 className="text-xl md:text-2xl font-display font-bold text-white tracking-tight truncate">AI Co-Founder</h2>
+            <p className="text-xs md:text-sm text-ghost-muted truncate">Your strategic business partner, working 24/7</p>
           </div>
         </div>
 
         {/* Summary Cards Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-5">
           {loading ? (
             <>
               {[...Array(4)].map((_, i) => (
@@ -393,7 +393,7 @@ export default function CoFounderDashboard({ businessId }: CoFounderDashboardPro
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
           <QuickActionCard
             title="Daily Briefing"
             description="Your morning summary"
@@ -429,9 +429,13 @@ export default function CoFounderDashboard({ businessId }: CoFounderDashboardPro
         </div>
       </div>
 
-      {/* Premium Tab Navigation */}
-      <div className="border-b border-ghost-border bg-ghost-card/30 backdrop-blur-sm">
-        <div className="flex overflow-x-auto scrollbar-hide px-2">
+      {/* Premium Tab Navigation - Mobile Optimized */}
+      <div className="relative border-b border-ghost-border bg-ghost-card/30 backdrop-blur-sm">
+        {/* Fade edges for scroll indication */}
+        <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-ghost-card/30 to-transparent z-10 pointer-events-none md:hidden" />
+        <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-ghost-card/30 to-transparent z-10 pointer-events-none md:hidden" />
+
+        <div className="flex overflow-x-auto scrollbar-hide px-4 md:px-2 -mx-2 md:mx-0">
           {tabs.map((tab, index) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -439,7 +443,7 @@ export default function CoFounderDashboard({ businessId }: CoFounderDashboardPro
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center gap-2 px-5 py-4 transition-all duration-300
+                className={`relative flex items-center gap-2 px-4 md:px-5 min-h-[48px] transition-all duration-300
                   whitespace-nowrap min-w-fit group`}
                 style={{ animationDelay: `${index * 50}ms` }}
               >

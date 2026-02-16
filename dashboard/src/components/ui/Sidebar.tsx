@@ -176,8 +176,8 @@ export default function Sidebar({ activeView, onViewChange, selectedConversation
   // Mobile Bottom Navigation
   const MobileBottomNav = () => (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-ghost-card/95 backdrop-blur-xl
-      border-t border-ghost-border z-50 safe-area-pb">
-      <div className="flex items-center justify-around h-18 px-2">
+      border-t border-ghost-border z-50 pb-safe">
+      <div className="flex items-stretch justify-around px-1">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive = activeView === item.id
@@ -186,14 +186,14 @@ export default function Sidebar({ activeView, onViewChange, selectedConversation
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`relative flex flex-col items-center justify-center min-w-[56px] py-2 px-3
-                rounded-xl transition-all duration-300 ${
-                isActive ? 'text-emerald-400' : 'text-ghost-muted'
+              className={`relative flex flex-col items-center justify-center flex-1 min-h-[64px] py-2
+                transition-all duration-300 ${
+                isActive ? 'text-emerald-400' : 'text-ghost-muted active:bg-ghost-border/30'
               }`}
             >
               {/* Active background */}
               {isActive && (
-                <div className="absolute inset-1 bg-emerald-500/10 rounded-lg" />
+                <div className="absolute inset-x-2 inset-y-1 bg-emerald-500/10 rounded-xl" />
               )}
 
               <div className="relative">

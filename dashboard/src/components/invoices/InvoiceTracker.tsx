@@ -182,7 +182,7 @@ export default function InvoiceTracker({ businessId }: InvoiceTrackerProps) {
               key={f}
               onClick={() => setFilter(f)}
               className={
-                "px-4 py-2 rounded-lg text-sm font-medium transition-colors " +
+                "px-4 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors " +
                 (filter === f
                   ? "bg-emerald-600 text-white"
                   : "bg-ghost-card text-ghost-muted hover:bg-ghost-border")
@@ -206,8 +206,47 @@ export default function InvoiceTracker({ businessId }: InvoiceTrackerProps) {
         </div>
       </div>
 
-      {/* Invoices Table */}
-      <div className="bg-ghost-card border border-ghost-border rounded-2xl overflow-hidden">
+      {/* Invoices - Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="bg-ghost-card border border-ghost-border rounded-2xl p-8 text-center text-ghost-muted">
+            {searchQuery
+              ? `No invoices matching "${searchQuery}"`
+              : 'No invoices found. Invoices created via SMS will appear here.'}
+          </div>
+        ) : (
+          filtered.map((inv) => (
+            <div key={inv.id} className="bg-ghost-card border border-ghost-border rounded-xl p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="text-white font-medium">{inv.contact_name || 'Unknown'}</div>
+                  <div className="text-ghost-muted text-sm">{inv.contact_phone}</div>
+                </div>
+                <span className={"inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap " + getStatusBadge(inv.status)}>
+                  {getStatusIcon(inv.status)}
+                  {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
+                </span>
+              </div>
+              <div className="text-ghost-muted text-sm mb-2 line-clamp-1">
+                {inv.description || 'No description'}
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="text-xl font-bold text-white">
+                  ${(inv.amount_cents / 100).toFixed(2)}
+                </div>
+                <div className="text-ghost-muted text-xs">
+                  {inv.sent_at
+                    ? new Date(inv.sent_at).toLocaleDateString()
+                    : new Date(inv.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Invoices - Desktop Table View */}
+      <div className="hidden md:block bg-ghost-card border border-ghost-border rounded-2xl overflow-hidden">
         {filtered.length === 0 ? (
           <div className="p-8 text-center text-ghost-muted">
             {searchQuery
@@ -243,7 +282,7 @@ export default function InvoiceTracker({ businessId }: InvoiceTrackerProps) {
                     ${(inv.amount_cents / 100).toFixed(2)}
                   </td>
                   <td className="p-4">
-                    <span className={"inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium " + getStatusBadge(inv.status)}>
+                    <span className={"inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap " + getStatusBadge(inv.status)}>
                       {getStatusIcon(inv.status)}
                       {inv.status.charAt(0).toUpperCase() + inv.status.slice(1)}
                     </span>

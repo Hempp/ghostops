@@ -189,30 +189,32 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
         })}
       </div>
 
-      {/* Recent stats chart placeholder - shows last 7 days */}
+      {/* Recent stats chart - shows last 7 days */}
       {recentStats.length > 0 && (
         <div className="bg-ghost-card border border-ghost-border rounded-2xl p-4 md:p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Last 7 Days</h2>
-          <div className="grid grid-cols-7 gap-1 md:gap-2">
-            {recentStats.slice(0, 7).reverse().map((day, i) => (
-              <div key={i} className="text-center">
-                <div className="text-[10px] md:text-xs text-ghost-muted mb-2">
-                  {new Date(day.date).toLocaleDateString('en', { weekday: 'narrow' })}
-                  <span className="hidden md:inline">
-                    {new Date(day.date).toLocaleDateString('en', { weekday: 'short' }).slice(1)}
-                  </span>
+          <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="grid grid-cols-7 gap-2 md:gap-3 min-w-[280px]">
+              {recentStats.slice(0, 7).reverse().map((day, i) => (
+                <div key={i} className="text-center min-w-[36px]">
+                  <div className="text-[10px] md:text-xs text-ghost-muted mb-2">
+                    {new Date(day.date).toLocaleDateString('en', { weekday: 'narrow' })}
+                    <span className="hidden md:inline">
+                      {new Date(day.date).toLocaleDateString('en', { weekday: 'short' }).slice(1)}
+                    </span>
+                  </div>
+                  <div className="h-20 md:h-24 bg-ghost-border rounded-lg flex flex-col justify-end p-1.5">
+                    <div
+                      className="bg-gradient-to-t from-emerald-600 to-emerald-400 rounded transition-all"
+                      style={{ height: `${Math.min(100, (day.messages_sent + day.messages_received) * 2)}%`, minHeight: (day.messages_sent + day.messages_received) > 0 ? '4px' : '0' }}
+                    />
+                  </div>
+                  <div className="text-xs md:text-sm font-medium text-white mt-2">
+                    {day.messages_sent + day.messages_received}
+                  </div>
                 </div>
-                <div className="h-16 md:h-20 bg-ghost-border rounded flex flex-col justify-end p-1">
-                  <div
-                    className="bg-emerald-500 rounded transition-all"
-                    style={{ height: `${Math.min(100, (day.messages_sent + day.messages_received) * 2)}%` }}
-                  />
-                </div>
-                <div className="text-[10px] md:text-xs text-ghost-muted mt-1">
-                  {day.messages_sent + day.messages_received}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
