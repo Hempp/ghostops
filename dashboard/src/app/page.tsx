@@ -9,6 +9,7 @@ import ConversationThread from '@/components/chat/ConversationThread'
 import InvoiceTracker from '@/components/invoices/InvoiceTracker'
 import ContentCalendar from '@/components/calendar/ContentCalendar'
 import SettingsPanel from '@/components/settings/SettingsPanel'
+import CoFounderChat from '@/components/cofounder/CoFounderChat'
 import KeyboardShortcutsHelp from '@/components/ui/KeyboardShortcutsHelp'
 import { SectionErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { getStats } from '@/lib/supabase'
@@ -16,7 +17,7 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { Loader2, AlertCircle } from 'lucide-react'
 
-type View = 'dashboard' | 'conversations' | 'invoices' | 'calendar' | 'settings'
+type View = 'dashboard' | 'cofounder' | 'conversations' | 'invoices' | 'calendar' | 'settings'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -150,6 +151,12 @@ export default function Dashboard() {
               <StatsOverview businessId={businessId} />
             </SectionErrorBoundary>
           </div>
+        )}
+
+        {activeView === 'cofounder' && (
+          <SectionErrorBoundary section="AI Co-Founder">
+            <CoFounderChat businessId={businessId} />
+          </SectionErrorBoundary>
         )}
 
         {activeView === 'conversations' && (

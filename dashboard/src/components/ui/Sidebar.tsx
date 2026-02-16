@@ -8,12 +8,13 @@ import {
   Settings,
   Ghost,
   LogOut,
-  ChevronLeft
+  ChevronLeft,
+  Brain
 } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { useRouter } from 'next/navigation'
 
-type View = 'dashboard' | 'conversations' | 'invoices' | 'calendar' | 'settings'
+type View = 'dashboard' | 'cofounder' | 'conversations' | 'invoices' | 'calendar' | 'settings'
 
 interface SidebarProps {
   activeView: View
@@ -24,6 +25,7 @@ interface SidebarProps {
 
 const navItems: { id: View; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'cofounder', label: 'Co-Founder', icon: Brain },
   { id: 'conversations', label: 'Messages', icon: MessageSquare },
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'calendar', label: 'Content', icon: Calendar },
