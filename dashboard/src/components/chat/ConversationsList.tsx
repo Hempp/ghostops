@@ -155,14 +155,15 @@ export default function ConversationsList({ businessId, selectedId, onSelect }: 
             No conversations yet. Messages will appear here when customers text your GhostOps number.
           </div>
         ) : (
-          filteredConversations.map((conv) => (
+          filteredConversations.map((conv, index) => (
             <button
               key={conv.id}
               onClick={() => onSelect(conv.id)}
               className={
-                "w-full p-4 text-left border-b border-ghost-border transition-colors min-h-[72px] active:bg-ghost-border/50 " +
+                "w-full p-4 text-left border-b border-ghost-border transition-all min-h-[72px] active:bg-ghost-border/50 animate-fade-in-up " +
                 (selectedId === conv.id ? "bg-emerald-600/10" : "hover:bg-ghost-border/30")
               }
+              style={{ animationDelay: `${Math.min(index * 50, 300)}ms` }}
             >
               <div className="flex items-center justify-between mb-1">
                 <span className="font-medium text-white truncate pr-2">

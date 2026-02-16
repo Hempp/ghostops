@@ -11,6 +11,7 @@ import ContentCalendar from '@/components/calendar/ContentCalendar'
 import SettingsPanel from '@/components/settings/SettingsPanel'
 import CoFounderDashboard from '@/components/cofounder/CoFounderDashboard'
 import KeyboardShortcutsHelp from '@/components/ui/KeyboardShortcutsHelp'
+import WelcomeOverlay from '@/components/ui/WelcomeOverlay'
 import { SectionErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { NotificationToast } from '@/components/notifications'
 import { getStats } from '@/lib/supabase'
@@ -142,6 +143,9 @@ export default function Dashboard() {
 
       {/* Real-time notification toasts */}
       <NotificationToast businessId={businessId} />
+
+      {/* Welcome overlay for first-time users */}
+      <WelcomeOverlay />
 
       {/* Keyboard shortcuts help modal */}
       {showShortcuts && (

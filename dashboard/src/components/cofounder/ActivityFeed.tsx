@@ -402,8 +402,14 @@ export default function ActivityFeed({
             <p className="text-xs text-ghost-muted mt-1">Your Co-Founder will show activity here</p>
           </div>
         ) : (
-          filteredActivities.map(item => (
-            <ActivityItemCard key={item.id} item={item} compact={compact} />
+          filteredActivities.map((item, index) => (
+            <div
+              key={item.id}
+              className="animate-fade-in-up"
+              style={{ animationDelay: `${Math.min(index * 75, 400)}ms` }}
+            >
+              <ActivityItemCard item={item} compact={compact} />
+            </div>
           ))
         )}
       </div>

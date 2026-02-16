@@ -2,12 +2,13 @@
 
 interface SkeletonProps {
   className?: string
+  shimmer?: boolean
 }
 
-export function Skeleton({ className = '' }: SkeletonProps) {
+export function Skeleton({ className = '', shimmer = true }: SkeletonProps) {
   return (
     <div
-      className={`animate-pulse bg-ghost-border rounded ${className}`}
+      className={`${shimmer ? 'skeleton' : 'animate-pulse bg-ghost-border'} rounded ${className}`}
     />
   )
 }

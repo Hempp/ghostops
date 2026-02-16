@@ -165,7 +165,11 @@ export default function StatsOverview({ businessId }: StatsOverviewProps) {
         {statCards.map((stat, i) => {
           const Icon = stat.icon
           return (
-            <div key={i} className="stat-card bg-ghost-card border border-ghost-border rounded-2xl p-4 md:p-6">
+            <div
+              key={i}
+              className="stat-card bg-ghost-card border border-ghost-border rounded-2xl p-4 md:p-6 animate-fade-in-up"
+              style={{ animationDelay: `${i * 75}ms` }}
+            >
               <div className="flex items-start justify-between mb-3 md:mb-4">
                 <div className={"w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center " + stat.bg + " " + stat.text}>
                   <Icon className="w-5 h-5 md:w-6 md:h-6" />
