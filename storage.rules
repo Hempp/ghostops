@@ -1,12 +1,19 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Business media files
+    // Business media files - SECURED
+    // Note: GhostOps has migrated to Supabase Storage. These rules are kept
+    // for any legacy Firebase usage but primary storage is now Supabase.
     match /businesses/{businessId}/media/{fileName} {
-      // Allow public read for posted content
-      allow read: if true;
-      // Only Cloud Functions can write
+      // Deny all public access - require authentication
+      allow read: if request.auth != null;
+      // Only Cloud Functions with service account can write
       allow write: if false;
+    }
+
+    // Default deny for everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

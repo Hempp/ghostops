@@ -1,16 +1,43 @@
 // Twilio Webhook Handlers - VELOCITY Communications
 import { Router, Request, Response } from 'express';
 import { supabase, getBusinessByTwilioNumber, getBusinessByOwnerPhone, getOrCreateContact, getOrCreateConversation, getRecentMessages, saveMessage, recordMissedCall, createLead, markLeadResponded, updateDailyStats, getOrCreateOwnerConversation, getOwnerMessages, saveOwnerMessage, getBusinessIntelligence } from '../../lib/supabase.js';
-import { sendSms, formatPhoneNumber } from '../../lib/sms/twilio.js';
+import { sendSms, formatPhoneNumber, validateTwilioSignature } from '../../lib/sms/twilio.js';
 import { generateCustomerResponse, generateMissedCallTextback, generateSocialPostOptions, generateCofounderResponse } from '../../lib/ai/claude.js';
 import { parseOwnerCommand, getHelpMessage, formatStatusMessage, formatUnpaidList, formatPostOptions, isConversationalMessage } from '../../lib/commands/parser.js';
 import { createInvoicePaymentLink } from '../../lib/payments/stripe.js';
+import { webhookRateLimiter } from '../../middleware/rateLimit.js';
 import type { TwilioSmsWebhook, TwilioVoiceWebhook, Business } from '../../types/index.js';
 
 const router = Router();
 
+// Validate Twilio webhook signature middleware
+function validateTwilioWebhook(req: Request, res: Response, next: Function): void {
+  const signature = req.headers['x-twilio-signature'] as string;
+
+  if (!signature) {
+    console.warn('Missing Twilio signature header');
+    res.status(403).send('<Response><Message>Invalid request</Message></Response>');
+    return;
+  }
+
+  // Construct the full URL for validation
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.headers.host;
+  const url = `${protocol}://${host}${req.originalUrl}`;
+
+  const isValid = validateTwilioSignature(signature, url, req.body);
+
+  if (!isValid) {
+    console.warn('Invalid Twilio signature for URL:', url);
+    res.status(403).send('<Response><Message>Invalid signature</Message></Response>');
+    return;
+  }
+
+  next();
+}
+
 // Inbound SMS Webhook
-router.post('/sms', async (req: Request, res: Response) => {
+router.post('/sms', webhookRateLimiter, validateTwilioWebhook, async (req: Request, res: Response) => {
   try {
     const webhook = req.body as TwilioSmsWebhook;
     const fromPhone = formatPhoneNumber(webhook.From);
@@ -290,7 +317,7 @@ async function handleCustomerMessage(
 }
 
 // Voice webhook - missed call handler
-router.post('/voice', async (req: Request, res: Response) => {
+router.post('/voice', webhookRateLimiter, validateTwilioWebhook, async (req: Request, res: Response) => {
   try {
     const webhook = req.body as TwilioVoiceWebhook;
     
