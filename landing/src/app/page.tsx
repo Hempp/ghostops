@@ -53,9 +53,15 @@ export default function LandingPage() {
               <a href="#how-it-works" className="text-ghost-muted hover:text-white transition">How It Works</a>
               <a href="#pricing" className="text-ghost-muted hover:text-white transition">Pricing</a>
               <a href="#faq" className="text-ghost-muted hover:text-white transition">FAQ</a>
+              <a
+                href="https://dashboard-kappa-inky-19.vercel.app/login"
+                className="text-ghost-muted hover:text-white transition"
+              >
+                Login
+              </a>
               <button
                 onClick={() => handleCheckout('pro')}
-                className="bg-emerald-600 text-white px-6 py-2.5 rounded-full font-medium hover:bg-emerald-500 transition"
+                className="btn-primary text-white px-6 py-2.5 rounded-full font-medium"
               >
                 Get Started
               </button>
@@ -76,7 +82,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
-            <div>
+            <div className="animate-fade-in-up">
               <div className="inline-flex items-center gap-2 bg-emerald-600/10 border border-emerald-600/30 rounded-full px-4 py-2 mb-6">
                 <Sparkles className="w-4 h-4 text-emerald-400" />
                 <span className="text-emerald-400 text-sm font-medium">No App. No Download. Just Text.</span>
@@ -125,8 +131,8 @@ export default function LandingPage() {
             </div>
 
             {/* Right - Phone Mockup with Owner Commands */}
-            <div className="relative flex justify-center">
-              <div className="phone-mockup w-[300px] h-[620px] relative animate-float">
+            <div className="relative flex justify-center animate-fade-in-up delay-200">
+              <div className="phone-mockup w-[300px] h-[620px] relative animate-float glow-subtle">
                 <div className="bg-black rounded-[2rem] h-full overflow-hidden">
                   {/* Phone Header */}
                   <div className="bg-ghost-card px-4 py-3 flex items-center gap-3 border-b border-ghost-border">
@@ -192,7 +198,7 @@ export default function LandingPage() {
               </div>
 
               {/* Floating Cards */}
-              <div className="absolute -left-10 top-20 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl">
+              <div className="absolute -left-10 top-20 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-left delay-300">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-pink-600/20 rounded-lg flex items-center justify-center">
                     <Instagram className="w-5 h-5 text-pink-400" />
@@ -204,7 +210,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="absolute -right-10 top-40 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl">
+              <div className="absolute -right-10 top-40 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-right delay-400">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
                     <DollarSign className="w-5 h-5 text-green-400" />
@@ -216,7 +222,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="absolute -left-5 bottom-32 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl">
+              <div className="absolute -left-5 bottom-32 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-left delay-500">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-orange-600/20 rounded-lg flex items-center justify-center">
                     <PhoneCall className="w-5 h-5 text-orange-400" />
@@ -332,7 +338,11 @@ export default function LandingPage() {
                 bg: 'bg-emerald-600/20'
               },
             ].map((feature, i) => (
-              <div key={i} className="gradient-border p-6">
+              <div
+                key={i}
+                className="feature-card p-6 animate-fade-in-up"
+                style={{ animationDelay: `${i * 75}ms` }}
+              >
                 <div className={"w-14 h-14 rounded-xl flex items-center justify-center mb-4 " + feature.bg}>
                   <feature.icon className={"w-7 h-7 " + feature.color} />
                 </div>
@@ -462,7 +472,11 @@ export default function LandingPage() {
                 description: 'Handle customers, invoices, calendar, social — all via text.'
               },
             ].map((item, i) => (
-              <div key={i} className="text-center">
+              <div
+                key={i}
+                className="text-center animate-fade-in-up"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
                 <div className="text-5xl font-serif gradient-text mb-4">{item.step}</div>
                 <h3 className="text-xl font-semibold text-white mb-2">{item.title}</h3>
                 <p className="text-ghost-muted">{item.description}</p>
@@ -636,7 +650,11 @@ export default function LandingPage() {
                 rating: 5
               },
             ].map((t, i) => (
-              <div key={i} className="bg-ghost-card border border-ghost-border rounded-2xl p-6">
+              <div
+                key={i}
+                className="testimonial-card animate-fade-in-up"
+                style={{ animationDelay: `${i * 100}ms` }}
+              >
                 <div className="flex gap-1 mb-4">
                   {Array(t.rating).fill(0).map((_, j) => (
                     <Star key={j} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
