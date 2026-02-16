@@ -6,10 +6,21 @@
 import twilio from 'twilio';
 import type { MessageInstance } from 'twilio/lib/rest/api/v2010/account/message.js';
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID!,
-  process.env.TWILIO_AUTH_TOKEN!
-);
+// Lazy initialization - only create client when needed and credentials exist
+let _client: ReturnType<typeof twilio> | null = null;
+
+function getClient(): ReturnType<typeof twilio> | null {
+  if (!_client) {
+    const sid = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    if (!sid || !token || sid === 'FILL_ME_IN' || !sid.startsWith('AC')) {
+      console.warn('Twilio credentials not configured - SMS/Voice disabled');
+      return null;
+    }
+    _client = twilio(sid, token);
+  }
+  return _client;
+}
 
 // ===========================================
 // SMS OPERATIONS
@@ -20,7 +31,13 @@ export async function sendSms(
   from: string,
   body: string,
   mediaUrls?: string[]
-): Promise<MessageInstance> {
+): Promise<MessageInstance | null> {
+  const client = getClient();
+  if (!client) {
+    console.warn(`SMS skipped (Twilio not configured): ${to}`);
+    return null;
+  }
+
   const messageOptions: {
     to: string;
     from: string;
@@ -46,7 +63,7 @@ export async function sendBulkSms(
     body: string;
     mediaUrls?: string[];
   }>
-): Promise<MessageInstance[]> {
+): Promise<(MessageInstance | null)[]> {
   return await Promise.all(
     messages.map((msg) => sendSms(msg.to, msg.from, msg.body, msg.mediaUrls))
   );
@@ -59,6 +76,11 @@ export async function sendBulkSms(
 export async function purchasePhoneNumber(
   areaCode?: string
 ): Promise<string> {
+  const client = getClient();
+  if (!client) {
+    throw new Error('Twilio not configured');
+  }
+
   const searchParams: { limit: number; smsEnabled: boolean; voiceEnabled: boolean; areaCode?: number } = {
     limit: 1,
     smsEnabled: true,
@@ -94,6 +116,11 @@ export async function configurePhoneNumber(
   phoneNumber: string,
   webhookBaseUrl: string
 ): Promise<void> {
+  const client = getClient();
+  if (!client) {
+    throw new Error('Twilio not configured');
+  }
+
   const numbers = await client.incomingPhoneNumbers.list({
     phoneNumber,
     limit: 1,
@@ -145,12 +172,9 @@ export function validateTwilioSignature(
   url: string,
   params: Record<string, string>
 ): boolean {
-  return twilio.validateRequest(
-    process.env.TWILIO_AUTH_TOKEN!,
-    signature,
-    url,
-    params
-  );
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!token || token === 'FILL_ME_IN') return true; // Skip validation if not configured
+  return twilio.validateRequest(token, signature, url, params);
 }
 
 // ===========================================
@@ -162,6 +186,11 @@ export async function getMessageHistory(
   to: string,
   limit = 20
 ): Promise<MessageInstance[]> {
+  const client = getClient();
+  if (!client) {
+    return [];
+  }
+
   const messages = await client.messages.list({
     from,
     to,

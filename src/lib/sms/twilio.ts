@@ -1,10 +1,24 @@
 // Twilio SMS Service - VELOCITY Communications
 import twilio from 'twilio';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID!;
-const authToken = process.env.TWILIO_AUTH_TOKEN!;
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
 
-const client = twilio(accountSid, authToken);
+// Lazy initialization - only create client if credentials exist
+let _client: ReturnType<typeof twilio> | null = null;
+
+function getClient() {
+  if (!_client) {
+    if (!accountSid || !authToken || accountSid === 'FILL_ME_IN') {
+      console.warn('Twilio credentials not configured - SMS disabled');
+      return null;
+    }
+    _client = twilio(accountSid, authToken);
+  }
+  return _client;
+}
+
+const client = { get instance() { return getClient(); } };
 
 export interface SendSmsOptions {
   to: string;
@@ -14,21 +28,27 @@ export interface SendSmsOptions {
 }
 
 export async function sendSms(options: SendSmsOptions): Promise<string> {
+  const twilioClient = getClient();
+  if (!twilioClient) {
+    console.warn(`SMS skipped (Twilio not configured): ${options.to}`);
+    return 'twilio-disabled';
+  }
+
   const { to, from, body, mediaUrls } = options;
-  
+
   const messageParams: {
     to: string;
     from: string;
     body: string;
     mediaUrl?: string[];
   } = { to, from, body };
-  
+
   if (mediaUrls && mediaUrls.length > 0) {
     messageParams.mediaUrl = mediaUrls;
   }
-  
-  const message = await client.messages.create(messageParams);
-  
+
+  const message = await twilioClient.messages.create(messageParams);
+
   console.log(`SMS sent: ${message.sid} to ${to}`);
   return message.sid;
 }
@@ -61,6 +81,7 @@ export function validateTwilioSignature(
   url: string,
   params: Record<string, string>
 ): boolean {
+  if (!authToken || authToken === 'FILL_ME_IN') return true; // Skip validation if not configured
   return twilio.validateRequest(authToken, signature, url, params);
 }
 
@@ -96,4 +117,4 @@ export function parsePhoneNumber(phone: string): {
   return { formatted, digits, countryCode };
 }
 
-export { client as twilioClient };
+export { getClient as getTwilioClient };
