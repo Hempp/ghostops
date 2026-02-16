@@ -1,12 +1,45 @@
 'use client'
 
 import { useState } from 'react'
+import Script from 'next/script'
 import {
   Ghost, Phone, MessageSquare, DollarSign, Star, Calendar,
   Zap, Clock, TrendingUp, CheckCircle, ArrowRight, Menu, X,
   Instagram, Facebook, PhoneCall, Send, Bot, Sparkles,
   Sun, Image, BarChart3, Loader2
 } from 'lucide-react'
+
+// JSON-LD Structured Data
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'GhostOps',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Any (SMS-based)',
+  description: 'AI-powered SMS assistant that handles invoices, social media, missed call recovery, and business automation via text messages.',
+  offers: {
+    '@type': 'AggregateOffer',
+    lowPrice: '79',
+    highPrice: '499',
+    priceCurrency: 'USD',
+    offerCount: '3',
+  },
+  aggregateRating: {
+    '@type': 'AggregateRating',
+    ratingValue: '4.9',
+    ratingCount: '127',
+    bestRating: '5',
+    worstRating: '1',
+  },
+  featureList: [
+    'SMS Invoicing with Stripe payments',
+    'AI Social Media Management',
+    'Missed Call Text-Back',
+    'Morning Business Briefings',
+    'Review Management',
+    'Calendar Integration',
+  ],
+}
 
 export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -36,7 +69,15 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-ghost-bg">
+    <>
+      {/* JSON-LD Structured Data - static content, safe to use */}
+      <Script
+        id="json-ld"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      <div className="min-h-screen bg-ghost-bg">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-ghost-bg/80 backdrop-blur-xl border-b border-ghost-border">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -824,5 +865,6 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+    </>
   )
 }
