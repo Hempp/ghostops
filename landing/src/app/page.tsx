@@ -67,15 +67,71 @@ export default function LandingPage() {
               </button>
             </div>
 
-            <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            <button
+              className="md:hidden p-2 -mr-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
+
+          {/* Mobile Menu Dropdown */}
+          {mobileMenuOpen && (
+            <div className="md:hidden absolute top-full left-0 right-0 bg-ghost-card/95 backdrop-blur-xl border-b border-ghost-border animate-fade-in">
+              <div className="flex flex-col p-4 space-y-1">
+                <a
+                  href="#features"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 text-ghost-muted hover:text-white hover:bg-ghost-border/30 rounded-lg transition"
+                >
+                  Features
+                </a>
+                <a
+                  href="#how-it-works"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 text-ghost-muted hover:text-white hover:bg-ghost-border/30 rounded-lg transition"
+                >
+                  How It Works
+                </a>
+                <a
+                  href="#pricing"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 text-ghost-muted hover:text-white hover:bg-ghost-border/30 rounded-lg transition"
+                >
+                  Pricing
+                </a>
+                <a
+                  href="#faq"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 text-ghost-muted hover:text-white hover:bg-ghost-border/30 rounded-lg transition"
+                >
+                  FAQ
+                </a>
+                <a
+                  href="https://dashboard-kappa-inky-19.vercel.app/login"
+                  className="px-4 py-3 text-ghost-muted hover:text-white hover:bg-ghost-border/30 rounded-lg transition"
+                >
+                  Login
+                </a>
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      handleCheckout('pro')
+                    }}
+                    className="w-full btn-primary text-white px-6 py-3 rounded-full font-medium"
+                  >
+                    Get Started
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
+      <section className="pt-24 sm:pt-32 pb-16 sm:pb-20 px-4 sm:px-6 relative overflow-hidden">
         {/* Background Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-emerald-600/20 rounded-full blur-[120px] pointer-events-none" />
 
@@ -88,51 +144,51 @@ export default function LandingPage() {
                 <span className="text-emerald-400 text-sm font-medium">No App. No Download. Just Text.</span>
               </div>
 
-              <h1 className="text-5xl lg:text-7xl font-serif text-white leading-tight mb-6">
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-serif text-white leading-tight mb-4 sm:mb-6">
                 A Co-Founder<br />
                 <span className="gradient-text">In Your Pocket</span>
               </h1>
 
-              <p className="text-xl text-ghost-muted mb-8 leading-relaxed">
+              <p className="text-lg sm:text-xl text-ghost-muted mb-6 sm:mb-8 leading-relaxed">
                 Run your entire business from text messages. Invoices, social media,
                 missed call recovery — all via SMS. Your AI handles everything while you do the real work.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4 mb-12">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12">
                 <button
                   onClick={() => handleCheckout('pro')}
-                  className="bg-emerald-600 text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2 glow"
+                  className="bg-emerald-600 text-white px-6 sm:px-8 py-4 min-h-[52px] rounded-full font-semibold text-base sm:text-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2 glow"
                 >
                   Start Free Trial <ArrowRight className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="border border-ghost-border text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-ghost-card transition"
+                  className="border border-ghost-border text-white px-6 sm:px-8 py-4 min-h-[52px] rounded-full font-semibold text-base sm:text-lg hover:bg-ghost-card transition"
                 >
                   See It In Action
                 </button>
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-3 gap-6">
-                <div>
-                  <div className="text-3xl font-bold text-white">0</div>
-                  <div className="text-ghost-muted text-sm">Apps to download</div>
+              <div className="grid grid-cols-3 gap-3 sm:gap-6">
+                <div className="text-center sm:text-left">
+                  <div className="text-2xl sm:text-3xl font-bold text-white">0</div>
+                  <div className="text-ghost-muted text-xs sm:text-sm">Apps to download</div>
                 </div>
-                <div>
-                  <div className="text-3xl font-bold text-white">2 min</div>
-                  <div className="text-ghost-muted text-sm">Setup via text</div>
+                <div className="text-center sm:text-left">
+                  <div className="text-2xl sm:text-3xl font-bold text-white">2 min</div>
+                  <div className="text-ghost-muted text-xs sm:text-sm">Setup via text</div>
                 </div>
-                <div>
-                  <div className="text-3xl font-bold text-white">24/7</div>
-                  <div className="text-ghost-muted text-sm">AI working for you</div>
+                <div className="text-center sm:text-left">
+                  <div className="text-2xl sm:text-3xl font-bold text-white">24/7</div>
+                  <div className="text-ghost-muted text-xs sm:text-sm">AI working for you</div>
                 </div>
               </div>
             </div>
 
             {/* Right - Phone Mockup with Owner Commands */}
             <div className="relative flex justify-center animate-fade-in-up delay-200">
-              <div className="phone-mockup w-[300px] h-[620px] relative animate-float glow-subtle">
+              <div className="phone-mockup w-[280px] sm:w-[300px] h-[580px] sm:h-[620px] relative lg:animate-float glow-subtle">
                 <div className="bg-black rounded-[2rem] h-full overflow-hidden">
                   {/* Phone Header */}
                   <div className="bg-ghost-card px-4 py-3 flex items-center gap-3 border-b border-ghost-border">
@@ -197,8 +253,8 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Floating Cards */}
-              <div className="absolute -left-10 top-20 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-left delay-300">
+              {/* Floating Cards - Hidden on mobile */}
+              <div className="hidden lg:block absolute -left-10 top-20 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-left delay-300">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-pink-600/20 rounded-lg flex items-center justify-center">
                     <Instagram className="w-5 h-5 text-pink-400" />
@@ -210,7 +266,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="absolute -right-10 top-40 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-right delay-400">
+              <div className="hidden lg:block absolute -right-10 top-40 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-right delay-400">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-green-600/20 rounded-lg flex items-center justify-center">
                     <DollarSign className="w-5 h-5 text-green-400" />
@@ -222,7 +278,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="absolute -left-5 bottom-32 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-left delay-500">
+              <div className="hidden lg:block absolute -left-5 bottom-32 bg-ghost-card border border-ghost-border rounded-xl p-4 shadow-xl animate-slide-in-left delay-500">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-orange-600/20 rounded-lg flex items-center justify-center">
                     <PhoneCall className="w-5 h-5 text-orange-400" />
@@ -239,9 +295,9 @@ export default function LandingPage() {
       </section>
 
       {/* "No App" Section */}
-      <section className="py-16 border-y border-ghost-border bg-ghost-card/50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
+      <section className="py-12 sm:py-16 border-y border-ghost-border bg-ghost-card/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center">
             <div>
               <div className="text-4xl mb-2">📱</div>
               <div className="text-white font-medium">Works on any phone</div>
@@ -267,10 +323,10 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-24 px-6">
+      <section id="features" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-serif text-white mb-4">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-white mb-4">
               Everything You Need, <span className="gradient-text">One Text Away</span>
             </h2>
             <p className="text-xl text-ghost-muted max-w-2xl mx-auto">
@@ -279,7 +335,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[
               {
                 icon: Calendar,
@@ -355,9 +411,9 @@ export default function LandingPage() {
       </section>
 
       {/* Social Media Deep Dive */}
-      <section className="py-24 px-6 bg-ghost-card">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-ghost-card">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
             <div>
               <div className="inline-flex items-center gap-2 bg-pink-600/10 border border-pink-600/30 rounded-full px-4 py-2 mb-6">
                 <Instagram className="w-4 h-4 text-pink-400" />
@@ -444,16 +500,16 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-24 px-6">
+      <section id="how-it-works" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-serif text-white mb-4">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-white mb-4">
               Set Up in <span className="gradient-text">2 Minutes</span>
             </h2>
-            <p className="text-xl text-ghost-muted">All via text. No calls. No forms. No app.</p>
+            <p className="text-lg sm:text-xl text-ghost-muted">All via text. No calls. No forms. No app.</p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             {[
               {
                 step: '01',
@@ -523,16 +579,16 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 px-6 bg-ghost-card">
+      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6 bg-ghost-card">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-serif text-white mb-4">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-white mb-4">
               Simple, <span className="gradient-text">Transparent Pricing</span>
             </h2>
-            <p className="text-xl text-ghost-muted">Less than a part-time employee. Works 24/7.</p>
+            <p className="text-lg sm:text-xl text-ghost-muted">Less than a part-time employee. Works 24/7.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
             {/* Starter */}
             <div className="bg-ghost-bg border border-ghost-border rounded-2xl p-8">
               <div className="text-ghost-muted font-medium mb-2">Starter</div>
@@ -554,7 +610,7 @@ export default function LandingPage() {
               <button
                 onClick={() => handleCheckout('starter')}
                 disabled={loading === 'starter'}
-                className="w-full border border-ghost-border text-white py-3 rounded-full font-medium hover:bg-ghost-border transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full border border-ghost-border text-white py-4 min-h-[52px] rounded-full font-medium hover:bg-ghost-border transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading === 'starter' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
                 Start Free Trial
@@ -585,7 +641,7 @@ export default function LandingPage() {
               <button
                 onClick={() => handleCheckout('pro')}
                 disabled={loading === 'pro'}
-                className="w-full bg-emerald-600 text-white py-3 rounded-full font-medium hover:bg-emerald-500 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full bg-emerald-600 text-white py-4 min-h-[52px] rounded-full font-medium hover:bg-emerald-500 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading === 'pro' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
                 Start Free Trial
@@ -614,7 +670,7 @@ export default function LandingPage() {
               <button
                 onClick={() => handleCheckout('agency')}
                 disabled={loading === 'agency'}
-                className="w-full border border-ghost-border text-white py-3 rounded-full font-medium hover:bg-ghost-border transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full border border-ghost-border text-white py-4 min-h-[52px] rounded-full font-medium hover:bg-ghost-border transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {loading === 'agency' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
                 Start Free Trial
@@ -625,15 +681,15 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 px-6">
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-serif text-white mb-4">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-white mb-4">
               Like Having a <span className="gradient-text">24/7 Business Partner</span>
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {[
               {
                 quote: "I texted 'what's my day' this morning and got my entire schedule, unpaid invoices, and a heads up about a 5-star review. All before coffee.",
@@ -676,10 +732,10 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="py-24 px-6 bg-ghost-card">
+      <section id="faq" className="py-16 sm:py-24 px-4 sm:px-6 bg-ghost-card">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl lg:text-5xl font-serif text-white mb-4">
+          <div className="text-center mb-10 sm:mb-16">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-white mb-4">
               Frequently Asked <span className="gradient-text">Questions</span>
             </h2>
           </div>
@@ -717,25 +773,25 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-6 relative overflow-hidden">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-teal-600/20" />
         <div className="max-w-4xl mx-auto text-center relative">
-          <h2 className="text-4xl lg:text-5xl font-serif text-white mb-6">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif text-white mb-4 sm:mb-6">
             Ready for a Co-Founder That Never Sleeps?
           </h2>
-          <p className="text-xl text-ghost-muted mb-8">
+          <p className="text-lg sm:text-xl text-ghost-muted mb-6 sm:mb-8">
             Start your 14-day free trial. Set up in 2 minutes via text.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-md mx-auto">
             <input
               type="email"
               placeholder="Enter your email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 bg-ghost-card border border-ghost-border rounded-full px-6 py-4 text-white placeholder-ghost-muted focus:outline-none focus:border-emerald-600"
+              className="flex-1 bg-ghost-card border border-ghost-border rounded-full px-5 sm:px-6 py-4 min-h-[52px] text-white placeholder-ghost-muted focus:outline-none focus:border-emerald-600"
             />
-            <button className="bg-emerald-600 text-white px-8 py-4 rounded-full font-semibold hover:bg-emerald-500 transition whitespace-nowrap">
+            <button className="bg-emerald-600 text-white px-6 sm:px-8 py-4 min-h-[52px] rounded-full font-semibold hover:bg-emerald-500 transition whitespace-nowrap">
               Get Started
             </button>
           </div>
@@ -745,7 +801,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-ghost-border">
+      <footer className="py-10 sm:py-12 px-4 sm:px-6 border-t border-ghost-border">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
@@ -755,10 +811,10 @@ export default function LandingPage() {
               <span className="font-serif text-xl text-white">GhostOps</span>
             </div>
 
-            <div className="flex gap-8 text-ghost-muted">
-              <a href="#" className="hover:text-white transition">Privacy</a>
-              <a href="#" className="hover:text-white transition">Terms</a>
-              <a href="#" className="hover:text-white transition">Contact</a>
+            <div className="flex gap-6 sm:gap-8 text-ghost-muted">
+              <a href="#" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Privacy</a>
+              <a href="#" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Terms</a>
+              <a href="#" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Contact</a>
             </div>
 
             <div className="text-ghost-muted text-sm">
