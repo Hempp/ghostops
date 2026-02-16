@@ -1,3 +1,5 @@
+const { withSentryConfig } = require('@sentry/nextjs')
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -92,4 +94,26 @@ const nextConfig = {
   },
 }
 
-module.exports = withPWA(nextConfig)
+// Sentry configuration options
+const sentryWebpackPluginOptions = {
+  // Suppresses source map uploading logs during build
+  silent: true,
+
+  // Upload source maps to Sentry
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Routes browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers
+  tunnelRoute: '/monitoring',
+
+  // Hides source maps from generated client bundles
+  hideSourceMaps: true,
+
+  // Automatically tree-shake Sentry logger statements to reduce bundle size
+  disableLogger: true,
+
+  // Enables automatic instrumentation of Vercel Cron Monitors
+  automaticVercelMonitors: true,
+}
+
+module.exports = withSentryConfig(withPWA(nextConfig), sentryWebpackPluginOptions)
