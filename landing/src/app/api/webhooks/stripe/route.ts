@@ -8,18 +8,31 @@ import {
   getBusinessByStripeCustomer,
 } from '@/lib/supabase'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+// Lazy initialization to avoid build-time errors
+let _stripe: Stripe | null = null
+let _twilio: Twilio.Twilio | null = null
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+function getStripe() {
+  if (!_stripe) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  }
+  return _stripe
+}
 
-const twilioClient = new Twilio.Twilio(
-  process.env.TWILIO_ACCOUNT_SID!,
-  process.env.TWILIO_AUTH_TOKEN!
-)
+function getTwilio() {
+  if (!_twilio) {
+    _twilio = new Twilio.Twilio(
+      process.env.TWILIO_ACCOUNT_SID!,
+      process.env.TWILIO_AUTH_TOKEN!
+    )
+  }
+  return _twilio
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
   const sig = request.headers.get('stripe-signature')
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
   if (!sig || !webhookSecret) {
     return NextResponse.json(
@@ -31,7 +44,7 @@ export async function POST(request: NextRequest) {
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+    event = getStripe().webhooks.constructEvent(body, sig, webhookSecret)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('Webhook signature verification failed:', message)
@@ -103,7 +116,7 @@ async function provisionNewBusiness(session: Stripe.Checkout.Session) {
     if (customerPhone) {
       const masterNumber = process.env.TWILIO_MASTER_NUMBER || twilioNumber
 
-      await twilioClient.messages.create({
+      await getTwilio().messages.create({
         from: masterNumber,
         to: customerPhone,
         body: `Welcome to GhostOps!\n\nYour AI assistant number is:\n${twilioNumber}\n\nSave this number and text it anytime. Try these commands:\n\n- "what's my day"\n- "invoice John 500"\n- "post to instagram"\n\nYour customers can also text this number - I'll handle them 24/7.\n\nText your new number now to get started!`,
@@ -119,7 +132,7 @@ async function provisionNewBusiness(session: Stripe.Checkout.Session) {
 }
 
 async function purchaseTwilioNumber(): Promise<string> {
-  const availableNumbers = await twilioClient.availablePhoneNumbers('US').local.list({
+  const availableNumbers = await getTwilio().availablePhoneNumbers('US').local.list({
     smsEnabled: true,
     voiceEnabled: true,
     limit: 1,
@@ -129,7 +142,7 @@ async function purchaseTwilioNumber(): Promise<string> {
     throw new Error('No available phone numbers')
   }
 
-  const purchased = await twilioClient.incomingPhoneNumbers.create({
+  const purchased = await getTwilio().incomingPhoneNumbers.create({
     phoneNumber: availableNumbers[0].phoneNumber,
     friendlyName: 'GhostOps Business Line',
   })
@@ -140,7 +153,7 @@ async function purchaseTwilioNumber(): Promise<string> {
 async function configureTwilioWebhooks(phoneNumber: string) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://ghostops.ai'
 
-  const numbers = await twilioClient.incomingPhoneNumbers.list({
+  const numbers = await getTwilio().incomingPhoneNumbers.list({
     phoneNumber: phoneNumber,
   })
 
@@ -148,7 +161,7 @@ async function configureTwilioWebhooks(phoneNumber: string) {
     throw new Error(`Phone number not found: ${phoneNumber}`)
   }
 
-  await twilioClient.incomingPhoneNumbers(numbers[0].sid).update({
+  await getTwilio().incomingPhoneNumbers(numbers[0].sid).update({
     smsUrl: `${baseUrl}/api/webhooks/twilio/sms`,
     smsMethod: 'POST',
     voiceUrl: `${baseUrl}/api/webhooks/twilio/voice`,
