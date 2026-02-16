@@ -9,6 +9,7 @@ import twilioWebhook from './api/webhooks/twilio.js';
 import stripeWebhook from './api/webhooks/stripe.js';
 import leadsWebhook from './api/webhooks/leads.js';
 import reviewsWebhook from './api/webhooks/reviews.js';
+import whatsappWebhook from './api/webhooks/whatsapp.js';
 
 // Scheduler
 import { initializeScheduler } from './lib/scheduler/cron.js';
@@ -45,6 +46,7 @@ app.use('/webhooks/twilio', twilioWebhook);
 app.use('/webhooks/stripe', stripeWebhook);
 app.use('/webhooks/leads', leadsWebhook);
 app.use('/webhooks/reviews', reviewsWebhook);
+app.use('/webhooks/whatsapp', whatsappWebhook);
 
 // API routes for dashboard
 app.get('/api/businesses/:id', async (req, res) => {
@@ -146,11 +148,12 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 app.listen(PORT, () => {
   console.log('');
   console.log('  ╔═══════════════════════════════════════════╗');
-  console.log('  ║          GHOSTOPS SMS AI ENGINE           ║');
+  console.log('  ║          GHOSTOPS AI CO-FOUNDER           ║');
   console.log('  ║         "Your Ghost Employee" 👻          ║');
   console.log('  ╠═══════════════════════════════════════════╣');
   console.log('  ║  Server running on port ' + PORT + '              ║');
-  console.log('  ║  Webhooks ready at /webhooks/*            ║');
+  console.log('  ║  WhatsApp: /webhooks/whatsapp             ║');
+  console.log('  ║  SMS:      /webhooks/twilio               ║');
   console.log('  ║  Dashboard API at /api/*                  ║');
   console.log('  ╚═══════════════════════════════════════════╝');
   console.log('');

@@ -43,6 +43,29 @@ cd landing && npm run dev
 
 ## Plugins
 
+### NEXUS-PRIME Plugin
+
+This project uses **NEXUS-PRIME v3.2** - a master AI orchestration system with 81+ agents and 60 skills.
+
+**Core Commands:**
+- `/nexus` - Activate NEXUS-PRIME orchestrator
+- `/nexus-status` - Show system status and active agents
+- `/nexus-help` - Display all available commands
+
+**Team Deployments:**
+- `/deploy-forge` - Software Engineering team (FORGE-X)
+- `/deploy-ux` - UX/UI Design team (PRISM-UX)
+- `/deploy-ops` - DevOps/SRE team (NEXUS-OPS)
+- `/deploy-supabase` - Backend/Database team (SUPA-MASTER)
+- `/deploy-vercel` - Deployment team (DEPLOY-MASTER)
+- `/deploy-github` - Version Control team (REPO-MASTER)
+- `/deploy-sentinel-qa` - QA Automation (SENTINEL-QA)
+
+**Workflow Commands:**
+- `/workflow-bootstrap` - Initialize new project with best practices
+- `/workflow-audit` - Run security + performance + code audit
+- `/workflow-release` - Automated release pipeline
+
 ### UX/UI Mastery Plugin
 
 This project uses the **ux-ui-mastery** plugin for design expertise.
