@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   BarChart3,
   TrendingUp,
@@ -21,7 +21,8 @@ import {
   AlertTriangle,
   Rocket,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Info
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
 
@@ -76,17 +77,174 @@ interface WeeklyStrategyData {
   whatDidnt: WhatDidnt[]
   recommendations: StrategyRecommendation[]
   goalAdjustments: GoalAdjustment[]
+  isDemo?: boolean
 }
 
 interface WeeklyStrategyProps {
   businessId: string
 }
 
-// Mock data generator
-const generateStrategyData = (): WeeklyStrategyData => {
+// API response types
+interface APIWeeklyStrategyReport {
+  id: string
+  businessId: string
+  weekStart: string
+  weekEnd: string
+  executiveSummary: string
+  overallScore: number
+  metrics: {
+    totalLeads: number
+    totalLeadsLastWeek: number
+    totalRevenue: number
+    totalRevenueLastWeek: number
+    conversionRate: number
+    conversionRateLastWeek: number
+    totalMessages: number
+    totalMessagesLastWeek: number
+    invoicesSent: number
+    invoicesPaid: number
+    missedCalls: number
+    reviewsReceived: number
+    postsPublished: number
+  }
+  goals: {
+    leadsTarget: number
+    revenueTarget: number
+    conversionTarget: number
+  }
+  vsGoals: {
+    leadsVsTarget: number
+    revenueVsTarget: number
+    conversionVsTarget: number
+  }
+  analysis: {
+    whatWorked: string[]
+    whatDidntWork: string[]
+    keyInsights: string[]
+  }
+  recommendations: Array<{
+    category: string
+    priority: string
+    title: string
+    description: string
+    expectedImpact: string
+  }>
+  weeklyAgenda: string[]
+  createdAt: string
+  _source: 'reports' | 'notifications'
+}
+
+interface APIResponse {
+  report: APIWeeklyStrategyReport | null
+  message?: string
+  source?: string
+  error?: string
+}
+
+// Transform API response to component format
+function transformAPIResponse(report: APIWeeklyStrategyReport): WeeklyStrategyData {
+  const metrics: WeeklyMetric[] = [
+    {
+      label: 'Revenue',
+      thisWeek: report.metrics.totalRevenue / 100, // Convert cents to dollars
+      lastWeek: report.metrics.totalRevenueLastWeek / 100,
+      prefix: '$',
+      icon: DollarSign,
+      color: 'emerald'
+    },
+    {
+      label: 'New Leads',
+      thisWeek: report.metrics.totalLeads,
+      lastWeek: report.metrics.totalLeadsLastWeek,
+      icon: Users,
+      color: 'blue'
+    },
+    {
+      label: 'Conversion Rate',
+      thisWeek: Math.round(report.metrics.conversionRate),
+      lastWeek: Math.round(report.metrics.conversionRateLastWeek),
+      unit: '%',
+      icon: Target,
+      color: 'purple'
+    },
+    {
+      label: 'Messages Handled',
+      thisWeek: report.metrics.totalMessages,
+      lastWeek: report.metrics.totalMessagesLastWeek,
+      icon: MessageSquare,
+      color: 'amber'
+    }
+  ]
+
+  // Transform whatWorked from string array to structured format
+  const whatWorked: WhatWorked[] = report.analysis.whatWorked.map((item, index) => ({
+    id: `worked-${index}`,
+    title: item,
+    impact: 'Positive impact',
+    details: item
+  }))
+
+  // Transform whatDidntWork from string array to structured format
+  const whatDidnt: WhatDidnt[] = report.analysis.whatDidntWork.map((item, index) => ({
+    id: `didnt-${index}`,
+    title: item.split('.')[0] || item,
+    issue: item,
+    suggestion: report.analysis.keyInsights[index] || 'Review and optimize this area.'
+  }))
+
+  // Transform recommendations with effort level based on priority
+  const recommendations: StrategyRecommendation[] = report.recommendations.map((rec, index) => ({
+    id: `rec-${index}`,
+    title: rec.title,
+    description: rec.description,
+    expectedImpact: rec.expectedImpact,
+    effort: rec.priority === 'high' ? 'low' : rec.priority === 'medium' ? 'medium' : 'high',
+    priority: index + 1
+  }))
+
+  // Generate goal adjustments based on vsGoals
+  const goalAdjustments: GoalAdjustment[] = []
+
+  if (report.vsGoals.leadsVsTarget > 10) {
+    goalAdjustments.push({
+      id: 'adj-leads',
+      goalName: 'Lead Target',
+      currentTarget: `${Math.round(report.goals.leadsTarget)} leads`,
+      suggestedTarget: `${Math.round(report.goals.leadsTarget * 1.15)} leads`,
+      reason: `You're exceeding target by ${Math.round(report.vsGoals.leadsVsTarget)}%. Time to raise the bar.`,
+      direction: 'increase'
+    })
+  }
+
+  if (report.vsGoals.revenueVsTarget > 10) {
+    goalAdjustments.push({
+      id: 'adj-revenue',
+      goalName: 'Revenue Target',
+      currentTarget: `$${Math.round(report.goals.revenueTarget / 100).toLocaleString()}`,
+      suggestedTarget: `$${Math.round(report.goals.revenueTarget * 1.15 / 100).toLocaleString()}`,
+      reason: `Revenue is ${Math.round(report.vsGoals.revenueVsTarget)}% above target. Consider raising your goal.`,
+      direction: 'increase'
+    })
+  }
+
+  return {
+    weekEnding: new Date(report.weekEnd),
+    summary: report.executiveSummary,
+    overallScore: report.overallScore,
+    metrics,
+    whatWorked,
+    whatDidnt,
+    recommendations,
+    goalAdjustments,
+    isDemo: false
+  }
+}
+
+// Demo data generator for fallback
+const generateDemoData = (): WeeklyStrategyData => {
   return {
     weekEnding: new Date(),
-    summary: "Strong week overall with revenue up 23% and lead conversion improving. The automated follow-up sequences are paying off. Main area to improve: response time during peak hours (2-4pm) is lagging.",
+    summary: "This is demo data. Your weekly strategy report will appear here once generated. Reports are created automatically each week based on your business performance data.",
     overallScore: 78,
     metrics: [
       {
@@ -197,7 +355,8 @@ const generateStrategyData = (): WeeklyStrategyData => {
         reason: 'You\'re consistently hitting 2 min. Time to push for faster responses.',
         direction: 'increase'
       }
-    ]
+    ],
+    isDemo: true
   }
 }
 
@@ -372,23 +531,47 @@ export default function WeeklyStrategy({ businessId }: WeeklyStrategyProps) {
   const [data, setData] = useState<WeeklyStrategyData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadStrategy()
-  }, [businessId])
-
-  const loadStrategy = async () => {
+  const loadStrategy = useCallback(async () => {
     setLoading(true)
+    setError(null)
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1200))
-      const strategyData = generateStrategyData()
-      setData(strategyData)
-    } catch (error) {
-      console.error('Error loading strategy:', error)
+      const response = await fetch(`/api/cofounder/weekly-strategy?businessId=${encodeURIComponent(businessId)}`)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status}`)
+      }
+
+      const result: APIResponse = await response.json()
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      if (result.report) {
+        // Transform API response to component format
+        const transformedData = transformAPIResponse(result.report)
+        setData(transformedData)
+      } else {
+        // No report found, use demo data
+        console.log('No weekly strategy report found, using demo data')
+        setData(generateDemoData())
+      }
+    } catch (err) {
+      console.error('Error loading strategy:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load strategy')
+      // Fall back to demo data on error
+      setData(generateDemoData())
     } finally {
       setLoading(false)
     }
-  }
+  }, [businessId])
+
+  useEffect(() => {
+    loadStrategy()
+  }, [loadStrategy])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -417,12 +600,37 @@ export default function WeeklyStrategy({ businessId }: WeeklyStrategyProps) {
 
   return (
     <div className="space-y-6">
+      {/* Demo Banner */}
+      {data.isDemo && (
+        <div className="flex items-center gap-3 p-3 bg-blue-600/10 border border-blue-500/20 rounded-xl">
+          <Info className="w-5 h-5 text-blue-400 flex-shrink-0" />
+          <p className="text-sm text-blue-300">
+            Showing sample data. Your personalized weekly strategy will appear here once generated based on your business activity.
+          </p>
+        </div>
+      )}
+
+      {/* Error Banner (if using fallback data after error) */}
+      {error && data.isDemo && (
+        <div className="flex items-center gap-3 p-3 bg-amber-600/10 border border-amber-500/20 rounded-xl">
+          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+          <p className="text-xs text-amber-300">
+            Could not load latest data. Showing sample strategy.
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-purple-400" />
             Weekly Strategy Review
+            {data.isDemo && (
+              <span className="text-xs font-normal text-ghost-muted bg-ghost-card px-2 py-0.5 rounded-full">
+                Sample
+              </span>
+            )}
           </h2>
           <p className="text-sm text-ghost-muted mt-1">
             Week ending {data.weekEnding.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}

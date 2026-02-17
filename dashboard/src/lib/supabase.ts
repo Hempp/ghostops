@@ -11,59 +11,98 @@ export const isSupabaseConfigured =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+// Status type aliases for type safety
+export type ConversationStatus = 'active' | 'paused' | 'closed'
+export type InvoiceStatus = 'draft' | 'sent' | 'overdue' | 'paid' | 'cancelled'
+export type SocialPostStatus = 'draft' | 'pending_approval' | 'scheduled' | 'posted' | 'failed' | 'approved'
+
+// Auth result types - discriminated union for type safety
+type AuthResult<T> =
+  | { success: true; data: T; error?: never }
+  | { success: false; data?: never; error: Error }
+
 // Auth helper functions
-export async function signInWithEmail(email: string, password: string) {
+export async function signInWithEmail(
+  email: string,
+  password: string
+): Promise<AuthResult<{ user: import('@supabase/supabase-js').User }>> {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
-  if (error) throw error
-  return data
+  if (error) {
+    return { success: false, error }
+  }
+  if (!data.user) {
+    return { success: false, error: new Error('No user returned from sign in') }
+  }
+  return { success: true, data: { user: data.user } }
 }
 
-export async function signUp(email: string, password: string) {
+export async function signUp(
+  email: string,
+  password: string
+): Promise<AuthResult<{ user: import('@supabase/supabase-js').User | null }>> {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
   })
-  if (error) throw error
-  return data
-}
-
-export async function signOut() {
-  const { error } = await supabase.auth.signOut()
-  if (error) throw error
-}
-
-export async function getSession() {
-  const { data, error } = await supabase.auth.getSession()
-  if (error) throw error
-  return data.session
-}
-
-export async function getCurrentUser() {
-  const { data, error } = await supabase.auth.getUser()
-  if (error) throw error
-  return data.user
-}
-
-// Get the business ID for the current user
-export async function getUserBusinessId(): Promise<string | null> {
-  const user = await getCurrentUser()
-  if (!user) return null
-
-  const { data, error } = await supabase
-    .from('business_users')
-    .select('business_id')
-    .eq('user_id', user.id)
-    .single()
-
   if (error) {
-    console.error('Error fetching user business:', error)
-    return null
+    return { success: false, error }
   }
+  return { success: true, data: { user: data.user } }
+}
 
-  return data?.business_id || null
+export async function signOut(): Promise<{ error: Error | null }> {
+  const { error } = await supabase.auth.signOut()
+  return { error }
+}
+
+export async function resetPasswordForEmail(
+  email: string,
+  redirectTo?: string
+): Promise<{ error: Error | null }> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: redirectTo || `${window.location.origin}/reset-password`,
+  })
+  return { error }
+}
+
+export async function updatePassword(
+  newPassword: string
+): Promise<AuthResult<{ user: import('@supabase/supabase-js').User }>> {
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  })
+  if (error) {
+    return { success: false, error }
+  }
+  if (!data.user) {
+    return { success: false, error: new Error('No user returned from password update') }
+  }
+  return { success: true, data: { user: data.user } }
+}
+
+export async function getSession(): Promise<AuthResult<import('@supabase/supabase-js').Session>> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) {
+    return { success: false, error }
+  }
+  if (!data.session) {
+    return { success: false, error: new Error('No active session') }
+  }
+  return { success: true, data: data.session }
+}
+
+export async function getCurrentUser(): Promise<AuthResult<import('@supabase/supabase-js').User>> {
+  const { data, error } = await supabase.auth.getUser()
+  if (error) {
+    return { success: false, error }
+  }
+  if (!data.user) {
+    return { success: false, error: new Error('No authenticated user') }
+  }
+  return { success: true, data: data.user }
 }
 
 // Business user type
@@ -81,7 +120,7 @@ export interface Conversation {
   business_id: string
   contact_id: string | null
   phone: string
-  status: string
+  status: ConversationStatus
   context: Record<string, unknown>
   last_message_at: string
   created_at: string
@@ -115,7 +154,7 @@ export interface Invoice {
   contact_name: string | null
   amount_cents: number
   description: string
-  status: string
+  status: InvoiceStatus
   sent_at: string | null
   paid_at: string | null
   created_at: string
@@ -142,7 +181,7 @@ export interface SocialPost {
   content: string
   media_urls: string[]
   platforms: string[]
-  status: string
+  status: SocialPostStatus
   scheduled_at: string | null
   posted_at: string | null
   engagement: { likes?: number; comments?: number; shares?: number }
@@ -209,27 +248,88 @@ export async function getSocialPosts(businessId: string) {
 }
 
 // Mutation functions
+
+/**
+ * Send a manual SMS message to a conversation
+ *
+ * This function:
+ * 1. Gets the conversation details (phone number)
+ * 2. Calls the SMS send API to deliver the message via Twilio
+ * 3. The API handles database logging and daily stats
+ *
+ * @param conversationId - The conversation to send the message to
+ * @param businessId - The business sending the message
+ * @param content - The message content
+ * @returns The created message record
+ */
 export async function sendManualMessage(
   conversationId: string,
   businessId: string,
   content: string
-) {
-  const { data, error } = await supabase
+): Promise<Message> {
+  // First, get the conversation to find the phone number
+  const conversation = await getConversation(conversationId)
+  if (!conversation) {
+    throw new Error('Conversation not found')
+  }
+
+  // Get the current session for authentication
+  const { data: sessionData } = await supabase.auth.getSession()
+  const accessToken = sessionData?.session?.access_token
+
+  if (!accessToken) {
+    throw new Error('Not authenticated. Please sign in to send messages.')
+  }
+
+  // Call the SMS send API
+  const response = await fetch('/api/sms/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      to: conversation.phone,
+      message: content,
+      businessId,
+      conversationId,
+    }),
+  })
+
+  const result = await response.json()
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || 'Failed to send message')
+  }
+
+  // Fetch the newly created message from the database
+  // The API has already created it, so we fetch the latest outbound message
+  const { data: messages, error: fetchError } = await supabase
     .from('messages')
-    .insert({
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .eq('direction', 'outbound')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (fetchError) {
+    // The message was sent successfully, but we couldn't fetch it
+    // Return a synthetic message object
+    return {
+      id: result.messageId || 'temp-id',
       conversation_id: conversationId,
       business_id: businessId,
       direction: 'outbound',
       content,
+      media_urls: [],
       message_type: 'text',
       ai_generated: false,
-      media_urls: []
-    })
-    .select()
-    .single()
+      created_at: new Date().toISOString(),
+    }
+  }
 
-  if (error) throw error
-  return data as Message
+  return messages as Message
 }
 
 export async function updateConversationStatus(
@@ -471,4 +571,92 @@ export async function updateBusinessPausedStatus(
     .eq('id', businessId)
 
   if (error) throw error
+}
+
+export async function updateSocialPostStatus(
+  postId: string,
+  status: 'draft' | 'pending_approval' | 'scheduled' | 'posted' | 'failed' | 'approved',
+  scheduledAt?: string
+): Promise<SocialPost> {
+  const updateData: Record<string, unknown> = { status }
+
+  if (status === 'scheduled' && scheduledAt) {
+    updateData.scheduled_at = scheduledAt
+  }
+
+  if (status === 'posted') {
+    updateData.posted_at = new Date().toISOString()
+  }
+
+  const { data, error } = await supabase
+    .from('social_posts')
+    .update(updateData)
+    .eq('id', postId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as SocialPost
+}
+
+export async function getPendingActionsCount(businessId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('cofounder_actions')
+    .select('*', { count: 'exact', head: true })
+    .eq('business_id', businessId)
+    .eq('status', 'pending')
+
+  if (error) {
+    // If table doesn't exist, return fallback
+    if (error.code === '42P01') return 0
+    throw error
+  }
+  return count || 0
+}
+
+export async function getInsightsCount(businessId: string): Promise<number> {
+  // Get count of insights generated today
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const { count, error } = await supabase
+    .from('cofounder_insights')
+    .select('*', { count: 'exact', head: true })
+    .eq('business_id', businessId)
+    .gte('created_at', today.toISOString())
+
+  if (error) {
+    // If insights table doesn't exist, return fallback
+    if (error.code === '42P01') return 0
+    throw error
+  }
+  return count || 0
+}
+
+export async function getGoalsProgress(businessId: string): Promise<{ onTrack: number; total: number; percentage: number }> {
+  const { data, error } = await supabase
+    .from('business_goals')
+    .select('id, current_value, target_value')
+    .eq('business_id', businessId)
+    .eq('is_active', true)
+
+  if (error) {
+    // If goals table doesn't exist, return fallback
+    if (error.code === '42P01') return { onTrack: 0, total: 0, percentage: 0 }
+    throw error
+  }
+
+  const goals = data || []
+  const total = goals.length
+
+  if (total === 0) return { onTrack: 0, total: 0, percentage: 0 }
+
+  const onTrack = goals.filter(g => {
+    const progress = g.target_value > 0 ? (g.current_value / g.target_value) * 100 : 0
+    return progress >= 50
+  }).length
+
+  const percentage = Math.round((onTrack / total) * 100)
+
+  return { onTrack, total, percentage }
 }

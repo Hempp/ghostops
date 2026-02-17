@@ -1,8 +1,10 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { supabase, getUserBusinessId } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+
+const AUTH_TIMEOUT_MS = 10000
 
 interface AuthContextType {
   user: User | null
@@ -10,21 +12,14 @@ interface AuthContextType {
   businessId: string | null
   loading: boolean
   needsOnboarding: boolean
+  error: string | null
   signOut: () => Promise<void>
   refreshBusinessData: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  session: null,
-  businessId: null,
-  loading: true,
-  needsOnboarding: false,
-  signOut: async () => {},
-  refreshBusinessData: async () => {},
-})
+const AuthContext = createContext<AuthContextType | null>(null)
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext)
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider')
@@ -36,94 +31,123 @@ interface AuthProviderProps {
   children: ReactNode
 }
 
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const initializedRef = useRef(false)
 
-  const checkOnboardingStatus = async (bizId: string) => {
-    try {
+  const fetchBusinessData = useCallback(async (userId: string): Promise<void> => {
+    const { data, error: bizError } = await supabase
+      .from('business_users')
+      .select('business_id')
+      .eq('user_id', userId)
+      .single()
+
+    if (bizError) {
+      console.error('Error fetching business:', bizError)
+      setBusinessId(null)
+      setNeedsOnboarding(false)
+      return
+    }
+
+    const bizId = data?.business_id ?? null
+    setBusinessId(bizId)
+
+    if (bizId) {
       const { data: business } = await supabase
         .from('businesses')
         .select('onboarding_complete')
         .eq('id', bizId)
         .single()
 
-      return !business?.onboarding_complete
-    } catch {
-      return false
+      setNeedsOnboarding(!business?.onboarding_complete)
+    } else {
+      setNeedsOnboarding(false)
     }
-  }
-
-  const fetchBusinessData = async () => {
-    const bizId = await getUserBusinessId()
-    setBusinessId(bizId)
-
-    if (bizId) {
-      const needsSetup = await checkOnboardingStatus(bizId)
-      setNeedsOnboarding(needsSetup)
-    }
-  }
+  }, [])
 
   useEffect(() => {
-    // Get initial session
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession()
-        setSession(initialSession)
-        setUser(initialSession?.user ?? null)
+    if (initializedRef.current) return
+    initializedRef.current = true
 
-        if (initialSession?.user) {
-          await fetchBusinessData()
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error)
-      } finally {
+    let timeoutId: NodeJS.Timeout | null = null
+
+    async function initializeAuth(): Promise<void> {
+      timeoutId = setTimeout(() => {
+        setError('Authentication timed out. Please refresh the page.')
         setLoading(false)
+      }, AUTH_TIMEOUT_MS)
+
+      const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession()
+
+      if (timeoutId) clearTimeout(timeoutId)
+
+      if (sessionError) {
+        console.error('Error getting session:', sessionError)
+        setError('Failed to check authentication status.')
+        setLoading(false)
+        return
       }
+
+      setSession(initialSession)
+      setUser(initialSession?.user ?? null)
+
+      if (initialSession?.user) {
+        await fetchBusinessData(initialSession.user.id)
+      }
+
+      setLoading(false)
     }
 
     initializeAuth()
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        setSession(newSession)
-        setUser(newSession?.user ?? null)
+        try {
+          setSession(newSession)
+          setUser(newSession?.user ?? null)
+          setError(null)
 
-        if (newSession?.user) {
-          await fetchBusinessData()
-        } else {
-          setBusinessId(null)
-          setNeedsOnboarding(false)
+          if (newSession?.user) {
+            await fetchBusinessData(newSession.user.id)
+          } else {
+            setBusinessId(null)
+            setNeedsOnboarding(false)
+          }
+        } catch (err) {
+          console.error('Error in auth state change:', err)
+          setError('Authentication error. Please refresh.')
+        } finally {
+          setLoading(false)
         }
-
-        setLoading(false)
       }
     )
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
-  }, [])
+  }, [fetchBusinessData])
 
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      setUser(null)
-      setSession(null)
-      setBusinessId(null)
-      setNeedsOnboarding(false)
-    } catch (error) {
-      console.error('Error signing out:', error)
+  async function handleSignOut(): Promise<void> {
+    const { error: signOutError } = await supabase.auth.signOut()
+    if (signOutError) {
+      console.error('Error signing out:', signOutError)
     }
+    setUser(null)
+    setSession(null)
+    setBusinessId(null)
+    setNeedsOnboarding(false)
+    setError(null)
   }
 
-  const refreshBusinessData = async () => {
+  async function refreshBusinessData(): Promise<void> {
     if (user) {
-      await fetchBusinessData()
+      await fetchBusinessData(user.id)
     }
   }
 
@@ -135,6 +159,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         businessId,
         loading,
         needsOnboarding,
+        error,
         signOut: handleSignOut,
         refreshBusinessData,
       }}

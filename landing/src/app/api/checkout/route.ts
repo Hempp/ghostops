@@ -12,31 +12,66 @@ function getStripe() {
   })
 }
 
-// Pricing plans
+// Pricing plans - Updated Feb 2026
 const PLANS = {
   starter: {
     name: 'Starter',
-    price: 7900, // $79 in cents
+    price: 2900, // $29 in cents
     priceId: process.env.STRIPE_STARTER_PRICE_ID,
+    features: {
+      smsLimit: 100,
+      aiConversations: 50,
+      phoneNumbers: 1,
+      contacts: 250,
+    },
+  },
+  growth: {
+    name: 'Growth',
+    price: 7900, // $79 in cents
+    priceId: process.env.STRIPE_GROWTH_PRICE_ID,
+    features: {
+      smsLimit: 500,
+      aiConversations: 200,
+      phoneNumbers: 2,
+      contacts: 2500,
+    },
   },
   pro: {
     name: 'Pro',
-    price: 19700, // $197 in cents
+    price: 19900, // $199 in cents
     priceId: process.env.STRIPE_PRO_PRICE_ID,
-  },
-  agency: {
-    name: 'Agency',
-    price: 49900, // $499 in cents
-    priceId: process.env.STRIPE_AGENCY_PRICE_ID,
+    features: {
+      smsLimit: 2000,
+      aiConversations: -1, // unlimited
+      phoneNumbers: 5,
+      contacts: -1, // unlimited
+    },
   },
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { plan = 'starter' } = body
+    const { plan } = body
 
-    const selectedPlan = PLANS[plan as keyof typeof PLANS] || PLANS.starter
+    // Validate plan is provided and valid
+    if (!plan || !PLANS[plan as keyof typeof PLANS]) {
+      return NextResponse.json(
+        { error: `Invalid plan. Must be one of: ${Object.keys(PLANS).join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    const selectedPlan = PLANS[plan as keyof typeof PLANS]
+
+    // Validate priceId is configured
+    if (!selectedPlan.priceId) {
+      console.error(`Missing price ID for plan: ${plan}`)
+      return NextResponse.json(
+        { error: 'Plan pricing not configured. Please contact support.' },
+        { status: 500 }
+      )
+    }
 
     const stripe = getStripe()
 

@@ -170,6 +170,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Business not found' }, { status: 404 })
     }
 
+    // Check AI conversation limits
+    const { checkUsageLimit, incrementUsage } = await import('@/lib/usage-limits')
+    const usageCheck = await checkUsageLimit(businessId, 'ai', 1)
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'AI conversation limit reached',
+          message: usageCheck.message || 'You\'ve reached your AI conversation limit for this billing period. Upgrade your plan for more.',
+          usageInfo: {
+            current: usageCheck.currentUsage,
+            limit: usageCheck.limit,
+            remaining: usageCheck.remaining,
+          },
+        },
+        { status: 429 }
+      )
+    }
+
     // Fetch business intelligence in parallel
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -259,6 +277,9 @@ RESPOND WITH:
 
     const textContent = response.content.find(c => c.type === 'text')
     const responseText = textContent && textContent.type === 'text' ? textContent.text : 'I apologize, I had trouble generating a response. Please try again.'
+
+    // Increment monthly AI usage
+    await incrementUsage(businessId, 'ai', 1)
 
     return NextResponse.json({
       message: responseText,

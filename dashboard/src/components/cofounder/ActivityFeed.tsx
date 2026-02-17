@@ -1,25 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Bell,
   Send,
   TrendingUp,
-  DollarSign,
-  Users,
   AlertCircle,
   CheckCircle,
-  Clock,
   ChevronDown,
   ChevronUp,
   RefreshCw,
-  Loader2,
   Lightbulb,
-  Target,
-  Calendar,
-  Zap
+  AlertTriangle,
+  X
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
 export interface ActivityItem {
   id: string
@@ -29,6 +25,7 @@ export interface ActivityItem {
   timestamp: Date
   status: 'completed' | 'pending' | 'in_progress'
   details?: string
+  priority?: 'high' | 'medium' | 'low'
   actionButton?: {
     label: string
     onClick: () => void
@@ -42,8 +39,85 @@ interface ActivityFeedProps {
   compact?: boolean
 }
 
-// Mock data for demonstration - in production this would come from API
-const generateMockActivities = (): ActivityItem[] => {
+// Map API action types to ActivityItem types
+const mapActionType = (apiType: string): ActivityItem['type'] => {
+  const typeMap: Record<string, ActivityItem['type']> = {
+    payment_reminder: 'action',
+    lead_response: 'action',
+    review_reply: 'action',
+    social_post: 'action',
+    appointment_reminder: 'action',
+    follow_up: 'action',
+    alert: 'alert',
+    opportunity: 'opportunity',
+    insight: 'insight',
+    decision: 'decision',
+  }
+  return typeMap[apiType] || 'action'
+}
+
+// Map API status to ActivityItem status
+const mapStatus = (apiStatus: string): ActivityItem['status'] => {
+  const statusMap: Record<string, ActivityItem['status']> = {
+    pending: 'pending',
+    approved: 'in_progress',
+    executed: 'completed',
+    rejected: 'completed',
+  }
+  return statusMap[apiStatus] || 'pending'
+}
+
+// Fetch activities from the backend API
+async function fetchActivities(businessId: string): Promise<ActivityItem[]> {
+  try {
+    // Get session for auth
+    const { data: sessionData } = await supabase.auth.getSession()
+    const accessToken = sessionData?.session?.access_token
+
+    const response = await fetch(`/api/cofounder/actions?businessId=${businessId}&includeStats=false&limit=20`, {
+      headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch activities')
+    }
+
+    const data = await response.json()
+    const actions = data.actions || []
+
+    // Transform API response to ActivityItem format
+    return actions.map((action: {
+      id: string
+      type: string
+      title: string
+      description?: string
+      status: string
+      priority?: string
+      content?: string
+      metadata?: Record<string, unknown>
+      created_at: string
+    }) => ({
+      id: action.id,
+      type: mapActionType(action.type),
+      title: action.title,
+      description: action.description || action.content || '',
+      timestamp: new Date(action.created_at),
+      status: mapStatus(action.status),
+      priority: action.priority,
+      details: action.content || (action.metadata ? JSON.stringify(action.metadata) : undefined),
+      actionButton: action.status === 'pending' ? {
+        label: 'Review',
+        onClick: () => window.location.href = `/cofounder?action=${action.id}`
+      } : undefined
+    }))
+  } catch (error) {
+    console.error('Error fetching activities:', error)
+    return []
+  }
+}
+
+// Fallback mock data for when API fails or Supabase not configured
+const generateFallbackActivities = (): ActivityItem[] => {
   const now = new Date()
   return [
     {
@@ -53,7 +127,7 @@ const generateMockActivities = (): ActivityItem[] => {
       description: 'Invoice #1087 overdue by 7 days - $2,450.00',
       timestamp: new Date(now.getTime() - 15 * 60000),
       status: 'completed',
-      details: 'Sent personalized SMS reminder with payment link. Previous balance: $4,900. Total outstanding: $2,450.'
+      details: 'Sent personalized SMS reminder with payment link.'
     },
     {
       id: '2',
@@ -62,11 +136,6 @@ const generateMockActivities = (): ActivityItem[] => {
       description: 'High engagement detected - perfect timing for premium offer',
       timestamp: new Date(now.getTime() - 45 * 60000),
       status: 'pending',
-      details: 'Sarah M., Mike T., and Lisa R. have all been active customers for 6+ months with high satisfaction scores. Recommend premium package.',
-      actionButton: {
-        label: 'View Opportunities',
-        onClick: () => {}
-      }
     },
     {
       id: '3',
@@ -75,58 +144,6 @@ const generateMockActivities = (): ActivityItem[] => {
       description: 'Monthly revenue up 23% - see what drove growth',
       timestamp: new Date(now.getTime() - 2 * 3600000),
       status: 'completed',
-      details: 'Key drivers: New lead response time improved to <60s, follow-up automation increased conversion by 15%.'
-    },
-    {
-      id: '4',
-      type: 'decision',
-      title: 'Rescheduled consultation for Alex Chen',
-      description: 'Conflict detected with another appointment',
-      timestamp: new Date(now.getTime() - 4 * 3600000),
-      status: 'completed',
-      details: 'Original: Feb 16 @ 2pm. New: Feb 17 @ 10am. Customer notified via SMS and confirmed.'
-    },
-    {
-      id: '5',
-      type: 'alert',
-      title: 'Website form not submitting',
-      description: 'Contact form errors detected - 3 leads may be lost',
-      timestamp: new Date(now.getTime() - 5 * 3600000),
-      status: 'in_progress',
-      details: 'Form validation error on phone number field. Investigating...',
-      actionButton: {
-        label: 'View Details',
-        onClick: () => {}
-      }
-    },
-    {
-      id: '6',
-      type: 'action',
-      title: 'Daily briefing generated',
-      description: '5 priorities identified for today',
-      timestamp: new Date(now.getTime() - 8 * 3600000),
-      status: 'completed'
-    },
-    {
-      id: '7',
-      type: 'opportunity',
-      title: 'Seasonal promotion opportunity',
-      description: 'Presidents Day weekend - 40% of competitors running sales',
-      timestamp: new Date(now.getTime() - 12 * 3600000),
-      status: 'pending',
-      actionButton: {
-        label: 'Create Campaign',
-        onClick: () => {}
-      }
-    },
-    {
-      id: '8',
-      type: 'action',
-      title: 'Follow-up sequence started for 12 leads',
-      description: 'Automatic nurture campaign activated',
-      timestamp: new Date(now.getTime() - 24 * 3600000),
-      status: 'in_progress',
-      details: '12 leads from last week website visits. Day 1 message sent. Next touch: Day 3.'
     }
   ]
 }
@@ -290,6 +307,54 @@ function ActivityFeedSkeleton({ count = 3 }: { count?: number }) {
   )
 }
 
+function ErrorBanner({
+  error,
+  isUsingFallback,
+  onRetry,
+  onDismiss
+}: {
+  error: string | null
+  isUsingFallback: boolean
+  onRetry: () => void
+  onDismiss: () => void
+}) {
+  if (!error && !isUsingFallback) return null
+
+  const isError = !!error
+  const bgColor = isError ? 'bg-red-500/10' : 'bg-amber-500/10'
+  const borderColor = isError ? 'border-red-500/30' : 'border-amber-500/30'
+  const textColor = isError ? 'text-red-400' : 'text-amber-400'
+  const Icon = isError ? AlertCircle : AlertTriangle
+
+  return (
+    <div className={`mb-4 p-3 rounded-lg border ${bgColor} ${borderColor}`}>
+      <div className="flex items-start gap-3">
+        <Icon className={`w-5 h-5 ${textColor} flex-shrink-0 mt-0.5`} />
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium ${textColor}`}>
+            {isError ? 'Error Loading Data' : 'Showing Demo Data'}
+          </p>
+          <p className="text-xs text-ghost-muted mt-0.5">
+            {error || 'Unable to connect to backend. Displaying sample activities.'}
+          </p>
+          <button
+            onClick={onRetry}
+            className={`mt-2 text-xs font-medium ${textColor} hover:underline`}
+          >
+            Try again
+          </button>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="p-1 hover:bg-ghost-card rounded transition-colors text-ghost-muted hover:text-white"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ActivityFeed({
   businessId,
   limit = 10,
@@ -300,24 +365,42 @@ export default function ActivityFeed({
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'action' | 'insight' | 'opportunity' | 'alert'>('all')
+  const [error, setError] = useState<string | null>(null)
+  const [isUsingFallback, setIsUsingFallback] = useState(false)
+  const [errorDismissed, setErrorDismissed] = useState(false)
 
-  useEffect(() => {
-    loadActivities()
-  }, [businessId])
-
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     setLoading(true)
+    setError(null)
+    setIsUsingFallback(false)
+    setErrorDismissed(false)
     try {
-      // Simulate API call - in production this would fetch from backend
-      await new Promise(resolve => setTimeout(resolve, 800))
-      const mockData = generateMockActivities()
-      setActivities(mockData)
-    } catch (error) {
-      console.error('Error loading activities:', error)
+      // Fetch real data from backend if Supabase is configured
+      if (isSupabaseConfigured) {
+        const realActivities = await fetchActivities(businessId)
+        if (realActivities.length > 0) {
+          setActivities(realActivities)
+          return
+        }
+      }
+      // Fall back to demo data if API returns empty or Supabase not configured
+      const fallbackData = generateFallbackActivities()
+      setActivities(fallbackData)
+      setIsUsingFallback(true)
+    } catch (err) {
+      console.error('Error loading activities:', err)
+      setError('Failed to load activities. Showing demo data.')
+      // Use fallback data on error
+      setActivities(generateFallbackActivities())
+      setIsUsingFallback(true)
     } finally {
       setLoading(false)
     }
-  }
+  }, [businessId])
+
+  useEffect(() => {
+    loadActivities()
+  }, [loadActivities])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -367,6 +450,15 @@ export default function ActivityFeed({
           </div>
           <p className="text-sm text-ghost-muted">Real-time actions and decisions by your AI Co-Founder</p>
         </div>
+      )}
+
+      {!errorDismissed && (
+        <ErrorBanner
+          error={error}
+          isUsingFallback={isUsingFallback}
+          onRetry={handleRefresh}
+          onDismiss={() => setErrorDismissed(true)}
+        />
       )}
 
       {!compact && (

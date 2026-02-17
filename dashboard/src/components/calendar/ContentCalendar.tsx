@@ -6,7 +6,7 @@ import { Instagram, Facebook, Clock, CheckCircle, Heart, MessageCircle, Share2, 
 // Supported platforms (Instagram and Facebook only - others coming soon)
 const SUPPORTED_PLATFORMS = ['instagram', 'facebook']
 import { toast } from 'sonner'
-import { getSocialPosts, subscribeToSocialPosts, type SocialPost } from '@/lib/supabase'
+import { getSocialPosts, subscribeToSocialPosts, updateSocialPostStatus, isSupabaseConfigured, type SocialPost } from '@/lib/supabase'
 import { StatCardSkeleton, ContentCardSkeleton } from '@/components/ui/Skeleton'
 
 interface ContentCalendarProps {
@@ -16,6 +16,7 @@ interface ContentCalendarProps {
 export default function ContentCalendar({ businessId }: ContentCalendarProps) {
   const [posts, setPosts] = useState<SocialPost[]>([])
   const [loading, setLoading] = useState(true)
+  const [approvingPostId, setApprovingPostId] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -76,8 +77,47 @@ export default function ContentCalendar({ businessId }: ContentCalendarProps) {
       scheduled: 'bg-blue-600',
       posted: 'bg-green-600',
       failed: 'bg-red-600',
+      approved: 'bg-emerald-600',
     }
     return colors[status] || colors.draft
+  }
+
+  const handleApprovePost = async (postId: string) => {
+    setApprovingPostId(postId)
+
+    // Optimistically update the UI
+    setPosts(prev => prev.map(p =>
+      p.id === postId ? { ...p, status: 'approved' } : p
+    ))
+
+    if (!isSupabaseConfigured) {
+      // Demo mode - just show success toast after a short delay
+      setTimeout(() => {
+        setApprovingPostId(null)
+        toast.success('Post approved', {
+          description: 'The post has been approved and will be scheduled for publishing.',
+        })
+      }, 500)
+      return
+    }
+
+    try {
+      await updateSocialPostStatus(postId, 'approved')
+      toast.success('Post approved', {
+        description: 'The post has been approved and will be scheduled for publishing.',
+      })
+    } catch (err) {
+      // Revert on error
+      setPosts(prev => prev.map(p =>
+        p.id === postId ? { ...p, status: 'pending_approval' } : p
+      ))
+      console.error('Error approving post:', err)
+      toast.error('Failed to approve post', {
+        description: err instanceof Error ? err.message : 'Please try again',
+      })
+    } finally {
+      setApprovingPostId(null)
+    }
   }
 
   if (loading) {
@@ -231,9 +271,18 @@ export default function ContentCalendar({ businessId }: ContentCalendarProps) {
                     </span>
                   </div>
                 ) : post.status === 'pending_approval' ? (
-                  <button className="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 transition-colors">
-                    Review & Approve
+                  <button
+                    onClick={() => handleApprovePost(post.id)}
+                    disabled={approvingPostId === post.id}
+                    className="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {approvingPostId === post.id ? 'Approving...' : 'Review & Approve'}
                   </button>
+                ) : post.status === 'approved' ? (
+                  <div className="flex items-center gap-1 text-sm text-emerald-400">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Approved - Pending schedule</span>
+                  </div>
                 ) : null}
               </div>
             </div>

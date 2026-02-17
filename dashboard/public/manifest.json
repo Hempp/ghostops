@@ -72,38 +72,6 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshots/desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "GhostOps Dashboard - Desktop View"
-    },
-    {
-      "src": "/screenshots/mobile.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "GhostOps Dashboard - Mobile View"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "View Conversations",
-      "short_name": "Conversations",
-      "description": "View all AI conversations",
-      "url": "/?view=conversations",
-      "icons": [{ "src": "/icons/shortcut-conversations.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "Analytics",
-      "short_name": "Analytics",
-      "description": "View business analytics",
-      "url": "/?view=analytics",
-      "icons": [{ "src": "/icons/shortcut-analytics.png", "sizes": "96x96" }]
-    }
-  ],
   "related_applications": [],
   "prefer_related_applications": false
 }

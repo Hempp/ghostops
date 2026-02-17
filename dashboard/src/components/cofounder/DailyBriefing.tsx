@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Sun,
   TrendingUp,
@@ -22,6 +22,17 @@ import {
   AlertTriangle
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
+
+// Icon mapping for API response
+const iconMap: Record<string, React.ElementType> = {
+  DollarSign,
+  Users,
+  MessageSquare,
+  Clock,
+  Calendar,
+  Target,
+  Zap
+}
 
 interface MetricComparison {
   label: string
@@ -53,13 +64,35 @@ interface DailyBriefingData {
   generatedAt: Date
 }
 
+// API response type (icon is a string)
+interface ApiBriefingMetric {
+  label: string
+  value: string | number
+  previousValue?: string | number
+  change?: number
+  changeLabel?: string
+  icon: string
+  color: string
+}
+
+interface ApiBriefingResponse {
+  greeting: string
+  summary: string
+  metrics: ApiBriefingMetric[]
+  priorities: Priority[]
+  opportunities: string[]
+  scheduledToday: number
+  generatedAt: string
+  isRealtime?: boolean
+}
+
 interface DailyBriefingProps {
   businessId: string
   onPriorityAction?: (priorityId: string) => void
 }
 
-// Mock data generator - in production this would come from AI analysis
-const generateBriefingData = (): DailyBriefingData => {
+// Demo data generator - used as fallback when API fails
+const generateDemoData = (): DailyBriefingData => {
   const now = new Date()
   const hour = now.getHours()
   let greeting = 'Good morning'
@@ -68,7 +101,7 @@ const generateBriefingData = (): DailyBriefingData => {
 
   return {
     greeting,
-    summary: "Your business had a strong start to the week. Revenue is tracking 18% above last week, and lead quality has improved significantly. Focus today on the 3 follow-ups below to maintain momentum.",
+    summary: "Demo mode: Your business had a strong start to the week. Revenue is tracking 18% above last week, and lead quality has improved significantly. Focus today on the follow-ups below to maintain momentum.",
     metrics: [
       {
         label: 'Revenue Today',
@@ -134,31 +167,33 @@ const generateBriefingData = (): DailyBriefingData => {
         completed: false,
         actionLabel: 'View leads',
         estimatedImpact: '3 new opportunities'
-      },
-      {
-        id: '4',
-        title: 'Confirm tomorrow\'s appointments',
-        description: '4 appointments scheduled. Send confirmation reminders to reduce no-shows.',
-        urgency: 'low',
-        completed: true,
-        actionLabel: 'Send confirmations'
-      },
-      {
-        id: '5',
-        title: 'Post social content',
-        description: 'Scheduled post ready for review and publishing.',
-        urgency: 'low',
-        completed: false,
-        actionLabel: 'Review post'
       }
     ],
     opportunities: [
-      'Presidents Day weekend promotion could boost sales 15-20%',
+      'Weekend promotion could boost sales 15-20%',
       '2 customers have anniversary dates this week - send appreciation offers',
       'Competitor price increase detected - highlight your value'
     ],
     scheduledToday: 4,
     generatedAt: new Date()
+  }
+}
+
+/**
+ * Transform API response to component data format
+ */
+function transformApiResponse(response: ApiBriefingResponse): DailyBriefingData {
+  return {
+    greeting: response.greeting,
+    summary: response.summary,
+    metrics: response.metrics.map(metric => ({
+      ...metric,
+      icon: iconMap[metric.icon] || DollarSign
+    })),
+    priorities: response.priorities,
+    opportunities: response.opportunities,
+    scheduledToday: response.scheduledToday,
+    generatedAt: new Date(response.generatedAt)
   }
 }
 
@@ -184,7 +219,7 @@ const getMetricColor = (color: string) => {
   return colors[color] || colors.blue
 }
 
-function MetricCard({ metric }: { metric: MetricComparison }) {
+function MetricCard({ metric, index }: { metric: MetricComparison; index: number }) {
   const Icon = metric.icon
   const colors = getMetricColor(metric.color)
   const isPositive = (metric.change || 0) > 0
@@ -193,22 +228,33 @@ function MetricCard({ metric }: { metric: MetricComparison }) {
   const isGood = metric.label.includes('Time') ? isNegative : isPositive
 
   return (
-    <div className="bg-ghost-card border border-ghost-border rounded-xl p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colors.bg}`}>
-          <Icon className={`w-4 h-4 ${colors.text}`} />
+    <div
+      className="group card-refined card-interactive bg-ghost-card/90 backdrop-blur-sm border border-ghost-border rounded-xl p-4
+        animate-fade-in-up"
+      style={{ animationDelay: `${index * 75}ms` }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${colors.bg}
+          transition-all duration-300 group-hover:scale-110`}>
+          <Icon className={`w-4 h-4 ${colors.text} drop-shadow-sm`} />
         </div>
         {metric.change !== undefined && (
-          <div className={`flex items-center gap-1 text-xs ${isGood ? 'text-emerald-400' : isNegative ? 'text-red-400' : 'text-ghost-muted'}`}>
+          <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full
+            transition-transform duration-300 group-hover:scale-105
+            ${isGood
+              ? 'text-emerald-400 bg-emerald-500/15'
+              : isNegative
+                ? 'text-red-400 bg-red-500/15'
+                : 'text-ghost-muted bg-ghost-border/50'}`}>
             {isGood ? <TrendingUp className="w-3 h-3" /> : isNegative ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
-            {Math.abs(metric.change)}%
+            <span className="tabular-nums">{Math.abs(metric.change)}%</span>
           </div>
         )}
       </div>
-      <div className="text-xl font-bold text-white">{metric.value}</div>
-      <div className="text-xs text-ghost-muted">{metric.label}</div>
+      <div className="text-2xl font-display font-bold text-white tabular-nums">{metric.value}</div>
+      <div className="text-xs font-medium text-ghost-text mt-1">{metric.label}</div>
       {metric.changeLabel && (
-        <div className="text-[10px] text-ghost-muted mt-1">{metric.changeLabel}</div>
+        <div className="text-[10px] text-ghost-muted mt-0.5">{metric.changeLabel}</div>
       )}
     </div>
   )
@@ -216,17 +262,27 @@ function MetricCard({ metric }: { metric: MetricComparison }) {
 
 function PriorityItem({
   priority,
-  onAction
+  onAction,
+  index
 }: {
   priority: Priority
   onAction?: () => void
+  index: number
 }) {
   const urgencyColors = getUrgencyColor(priority.urgency)
 
   return (
-    <div className={`p-4 rounded-xl border ${priority.completed ? 'border-ghost-border bg-ghost-card/30' : urgencyColors.border + ' bg-ghost-card/50'}`}>
+    <div
+      className={`group p-4 rounded-xl border backdrop-blur-sm transition-all duration-300
+        ${priority.completed
+          ? 'border-ghost-border/50 bg-ghost-card/30 opacity-60'
+          : `${urgencyColors.border} bg-ghost-card/60 hover:bg-ghost-card/80 hover:border-opacity-50
+             hover:shadow-[0_4px_20px_rgba(0,0,0,0.2)]`}
+        animate-list-item`}
+      style={{ animationDelay: `${index * 50}ms` }}
+    >
       <div className="flex items-start gap-3">
-        <button className="mt-0.5 flex-shrink-0">
+        <button className={`mt-0.5 flex-shrink-0 transition-transform duration-200 ${!priority.completed && 'group-hover:scale-110'}`}>
           {priority.completed ? (
             <CheckCircle className="w-5 h-5 text-emerald-400" />
           ) : (
@@ -235,30 +291,35 @@ function PriorityItem({
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h4 className={`text-sm font-medium ${priority.completed ? 'text-ghost-muted line-through' : 'text-white'}`}>
+            <h4 className={`text-sm font-semibold ${priority.completed ? 'text-ghost-muted line-through' : 'text-white'}`}>
               {priority.title}
             </h4>
             {!priority.completed && (
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${urgencyColors.bg} ${urgencyColors.text} uppercase tracking-wide flex-shrink-0`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${urgencyColors.bg} ${urgencyColors.text}
+                uppercase tracking-wider flex-shrink-0 ring-1 ${urgencyColors.border}`}>
                 {priority.urgency}
               </span>
             )}
           </div>
-          <p className={`text-xs mt-1 ${priority.completed ? 'text-ghost-muted/60' : 'text-ghost-muted'}`}>
+          <p className={`text-xs mt-1.5 leading-relaxed ${priority.completed ? 'text-ghost-muted/50' : 'text-ghost-muted'}`}>
             {priority.description}
           </p>
           {!priority.completed && (
-            <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-ghost-border/30">
               {priority.estimatedImpact && (
-                <span className="text-xs text-emerald-400/80">{priority.estimatedImpact}</span>
+                <span className="text-xs font-medium text-emerald-400/90 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  {priority.estimatedImpact}
+                </span>
               )}
               {priority.actionLabel && (
                 <button
                   onClick={onAction}
-                  className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300
+                    transition-all duration-200 group/btn"
                 >
                   {priority.actionLabel}
-                  <ChevronRight className="w-3 h-3" />
+                  <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-0.5" />
                 </button>
               )}
             </div>
@@ -299,28 +360,58 @@ export default function DailyBriefing({ businessId, onPriorityAction }: DailyBri
   const [briefing, setBriefing] = useState<DailyBriefingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
 
-  useEffect(() => {
-    loadBriefing()
-  }, [businessId])
+  const loadBriefing = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      setLoading(true)
+    }
+    setError(null)
 
-  const loadBriefing = async () => {
-    setLoading(true)
     try {
-      // Simulate API call - in production this would fetch AI-generated briefing
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const data = generateBriefingData()
-      setBriefing(data)
-    } catch (error) {
-      console.error('Error loading briefing:', error)
+      const response = await fetch(`/api/cofounder/briefing?businessId=${encodeURIComponent(businessId)}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+
+        // If no briefing found (404), fall back to demo data
+        if (response.status === 404 || errorData.code === 'NOT_FOUND') {
+          console.log('No briefing available, using demo data')
+          const demoData = generateDemoData()
+          setBriefing(demoData)
+          setIsDemo(true)
+          return
+        }
+
+        throw new Error(errorData.error || `Failed to fetch briefing: ${response.status}`)
+      }
+
+      const data: ApiBriefingResponse = await response.json()
+      const transformedData = transformApiResponse(data)
+      setBriefing(transformedData)
+      setIsDemo(false)
+
+    } catch (err) {
+      console.error('Error loading briefing:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load briefing')
+
+      // Fall back to demo data on error
+      const demoData = generateDemoData()
+      setBriefing(demoData)
+      setIsDemo(true)
     } finally {
       setLoading(false)
     }
-  }
+  }, [businessId])
+
+  useEffect(() => {
+    loadBriefing()
+  }, [loadBriefing])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await loadBriefing()
+    await loadBriefing(true)
     setRefreshing(false)
   }
 
@@ -356,63 +447,101 @@ export default function DailyBriefing({ businessId, onPriorityAction }: DailyBri
 
   return (
     <div className="space-y-6">
+      {/* Demo Mode Banner */}
+      {isDemo && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-600/10 border border-amber-500/30 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+          <p className="text-xs text-amber-300">
+            Showing demo data. Real briefings will appear once your business data is available.
+          </p>
+        </div>
+      )}
+
+      {/* Error Banner (if error occurred but we're showing demo data) */}
+      {error && isDemo && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-600/10 border border-red-500/30 rounded-lg">
+          <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+          <p className="text-xs text-red-300">
+            Could not load briefing: {error}
+          </p>
+        </div>
+      )}
+
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-amber-500/20 to-orange-600/20 rounded-xl flex items-center justify-center">
-              <Sun className="w-5 h-5 text-amber-400" />
+      <div className="flex items-start justify-between animate-fade-in">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-amber-500/25 to-orange-600/20 rounded-xl
+            flex items-center justify-center ring-1 ring-amber-500/20 icon-glow">
+            <Sun className="w-6 h-6 text-amber-400 drop-shadow-sm" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-display font-bold text-white text-headline">{briefing.greeting}</h2>
+              {isDemo && (
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-600/20 text-amber-400 rounded-full
+                  uppercase tracking-wider ring-1 ring-amber-500/30">
+                  Demo
+                </span>
+              )}
             </div>
-            <div>
-              <h2 className="text-xl font-semibold text-white">{briefing.greeting}</h2>
-              <p className="text-xs text-ghost-muted">
-                Updated {briefing.generatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
+            <p className="text-sm text-ghost-muted mt-0.5">
+              Updated {briefing.generatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </p>
           </div>
         </div>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="p-2 hover:bg-ghost-card rounded-lg transition-colors text-ghost-muted hover:text-white"
+          className="p-2.5 hover:bg-ghost-card rounded-xl transition-all duration-200
+            text-ghost-muted hover:text-white hover:scale-105 active:scale-95"
           title="Refresh briefing"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
       {/* Summary */}
-      <div className="p-4 bg-gradient-to-br from-emerald-600/10 to-teal-600/10 border border-emerald-500/20 rounded-xl">
+      <div className="p-5 bg-gradient-to-br from-emerald-600/12 to-teal-600/8 border border-emerald-500/20
+        rounded-2xl card-refined animate-fade-in-up" style={{ animationDelay: '100ms' }}>
         <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+          </div>
           <p className="text-sm text-ghost-text leading-relaxed">{briefing.summary}</p>
         </div>
       </div>
 
       {/* Metrics Grid */}
       <div>
-        <h3 className="text-sm font-medium text-ghost-muted mb-3 uppercase tracking-wide">Today's Snapshot</h3>
+        <h3 className="text-sm font-semibold text-ghost-text mb-4 uppercase tracking-wider flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          Today's Snapshot
+        </h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {briefing.metrics.map((metric, i) => (
-            <MetricCard key={i} metric={metric} />
+            <MetricCard key={i} metric={metric} index={i} />
           ))}
         </div>
       </div>
 
       {/* Priorities */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium text-ghost-muted uppercase tracking-wide">Today's Priorities</h3>
-          <span className="text-xs text-ghost-muted">
-            {completedCount}/{totalPriorities} done
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-ghost-text uppercase tracking-wider flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            Today's Priorities
+          </h3>
+          <span className="text-xs font-medium text-ghost-muted px-2 py-1 bg-ghost-card rounded-full">
+            <span className="text-emerald-400">{completedCount}</span>/{totalPriorities} done
           </span>
         </div>
         <div className="space-y-3">
-          {briefing.priorities.map(priority => (
+          {briefing.priorities.map((priority, index) => (
             <PriorityItem
               key={priority.id}
               priority={priority}
               onAction={() => handlePriorityAction(priority.id)}
+              index={index}
             />
           ))}
         </div>
@@ -421,15 +550,24 @@ export default function DailyBriefing({ businessId, onPriorityAction }: DailyBri
       {/* Opportunities */}
       {briefing.opportunities.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-ghost-muted mb-3 uppercase tracking-wide flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-400" />
+          <h3 className="text-sm font-semibold text-ghost-text mb-4 uppercase tracking-wider flex items-center gap-2">
+            <div className="w-5 h-5 rounded-lg bg-amber-500/15 flex items-center justify-center">
+              <Zap className="w-3 h-3 text-amber-400" />
+            </div>
             Opportunities
           </h3>
           <div className="space-y-2">
             {briefing.opportunities.map((opp, i) => (
-              <div key={i} className="flex items-start gap-2 p-3 bg-amber-600/10 border border-amber-500/20 rounded-lg">
-                <div className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-2 flex-shrink-0" />
-                <p className="text-sm text-ghost-text">{opp}</p>
+              <div
+                key={i}
+                className="group flex items-start gap-3 p-3.5 bg-amber-600/8 border border-amber-500/15 rounded-xl
+                  hover:bg-amber-600/12 hover:border-amber-500/25 transition-all duration-200
+                  animate-list-item"
+                style={{ animationDelay: `${i * 50}ms` }}
+              >
+                <div className="w-2 h-2 bg-amber-400 rounded-full mt-1.5 flex-shrink-0
+                  group-hover:scale-125 transition-transform duration-200" />
+                <p className="text-sm text-ghost-text leading-relaxed">{opp}</p>
               </div>
             ))}
           </div>
@@ -437,19 +575,25 @@ export default function DailyBriefing({ businessId, onPriorityAction }: DailyBri
       )}
 
       {/* Scheduled Today */}
-      <div className="flex items-center justify-between p-4 bg-ghost-card border border-ghost-border rounded-xl">
+      <div className="flex items-center justify-between p-4 bg-ghost-card/80 border border-ghost-border rounded-xl
+        card-interactive group">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-purple-600/20 rounded-xl flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-purple-400" />
+          <div className="w-11 h-11 bg-purple-600/20 rounded-xl flex items-center justify-center
+            transition-all duration-300 group-hover:scale-110 group-hover:bg-purple-600/25">
+            <Calendar className="w-5 h-5 text-purple-400 drop-shadow-sm" />
           </div>
           <div>
-            <p className="text-sm font-medium text-white">{briefing.scheduledToday} appointments today</p>
+            <p className="text-sm font-semibold text-white">
+              <span className="text-purple-400 tabular-nums">{briefing.scheduledToday}</span> appointments today
+            </p>
             <p className="text-xs text-ghost-muted">View your calendar for details</p>
           </div>
         </div>
-        <button className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+        <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-emerald-400
+          hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/15 rounded-lg
+          transition-all duration-200 group/btn">
           View
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />
         </button>
       </div>
     </div>

@@ -19,8 +19,8 @@ const jsonLd = {
   description: 'AI-powered SMS assistant that handles invoices, social media, missed call recovery, and business automation via text messages.',
   offers: {
     '@type': 'AggregateOffer',
-    lowPrice: '79',
-    highPrice: '499',
+    lowPrice: '29',
+    highPrice: '199',
     priceCurrency: 'USD',
     offerCount: '3',
   },
@@ -46,7 +46,7 @@ export default function LandingPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
 
-  const handleCheckout = async (plan: 'starter' | 'pro' | 'agency') => {
+  const handleCheckout = async (plan: 'starter' | 'growth' | 'pro') => {
     setLoading(plan)
     try {
       const response = await fetch('/api/checkout', {
@@ -101,7 +101,7 @@ export default function LandingPage() {
                 Login
               </a>
               <button
-                onClick={() => handleCheckout('pro')}
+                onClick={() => handleCheckout('growth')}
                 className="btn-primary text-white px-6 py-2.5 rounded-full font-medium"
               >
                 Get Started
@@ -158,7 +158,7 @@ export default function LandingPage() {
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false)
-                      handleCheckout('pro')
+                      handleCheckout('growth')
                     }}
                     className="w-full btn-primary text-white px-6 py-3 rounded-full font-medium"
                   >
@@ -197,7 +197,7 @@ export default function LandingPage() {
 
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-8 sm:mb-12">
                 <button
-                  onClick={() => handleCheckout('pro')}
+                  onClick={() => handleCheckout('growth')}
                   className="bg-emerald-600 text-white px-6 sm:px-8 py-4 min-h-[52px] rounded-full font-semibold text-base sm:text-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2 glow"
                 >
                   Start Free Trial <ArrowRight className="w-5 h-5" />
@@ -633,15 +633,16 @@ export default function LandingPage() {
             {/* Starter */}
             <div className="bg-ghost-bg border border-ghost-border rounded-2xl p-8">
               <div className="text-ghost-muted font-medium mb-2">Starter</div>
-              <div className="text-4xl font-bold text-white mb-1">$79<span className="text-lg text-ghost-muted">/mo</span></div>
+              <div className="text-4xl font-bold text-white mb-1">$29<span className="text-lg text-ghost-muted">/mo</span></div>
               <p className="text-ghost-muted text-sm mb-6">For solo operators</p>
               <ul className="space-y-3 mb-8">
                 {[
-                  'Missed call text-back',
-                  'SMS invoicing',
+                  '100 SMS messages/mo',
+                  '50 AI conversations/mo',
+                  'SMS invoicing (10/mo)',
                   'Morning briefing',
-                  'Basic stats via text',
-                  '500 AI messages/mo'
+                  '1 phone number',
+                  '250 contacts'
                 ].map((f, i) => (
                   <li key={i} className="flex items-center gap-2 text-white">
                     <CheckCircle className="w-5 h-5 text-emerald-400" /> {f}
@@ -658,21 +659,23 @@ export default function LandingPage() {
               </button>
             </div>
 
-            {/* Pro - Featured */}
+            {/* Growth - Featured */}
             <div className="gradient-border p-8 relative glow">
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-4 py-1 rounded-full text-sm font-medium">
                 Most Popular
               </div>
-              <div className="text-emerald-400 font-medium mb-2">Pro</div>
-              <div className="text-4xl font-bold text-white mb-1">$197<span className="text-lg text-ghost-muted">/mo</span></div>
-              <p className="text-ghost-muted text-sm mb-6">Full co-founder mode</p>
+              <div className="text-emerald-400 font-medium mb-2">Growth</div>
+              <div className="text-4xl font-bold text-white mb-1">$79<span className="text-lg text-ghost-muted">/mo</span></div>
+              <p className="text-ghost-muted text-sm mb-6">For active businesses</p>
               <ul className="space-y-3 mb-8">
                 {[
-                  'Everything in Starter',
+                  '500 SMS messages/mo',
+                  '200 AI conversations/mo',
+                  'Unlimited invoicing',
                   'AI Social Media (IG + FB)',
-                  'Review engine',
-                  'Unlimited AI messages',
-                  'Web dashboard'
+                  'Weekly strategy reports',
+                  '2 phone numbers',
+                  '2,500 contacts'
                 ].map((f, i) => (
                   <li key={i} className="flex items-center gap-2 text-white">
                     <CheckCircle className="w-5 h-5 text-emerald-400" /> {f}
@@ -680,26 +683,28 @@ export default function LandingPage() {
                 ))}
               </ul>
               <button
-                onClick={() => handleCheckout('pro')}
-                disabled={loading === 'pro'}
+                onClick={() => handleCheckout('growth')}
+                disabled={loading === 'growth'}
                 className="w-full bg-emerald-600 text-white py-4 min-h-[52px] rounded-full font-medium hover:bg-emerald-500 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {loading === 'pro' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                {loading === 'growth' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
                 Start Free Trial
               </button>
             </div>
 
-            {/* Enterprise */}
+            {/* Pro */}
             <div className="bg-ghost-bg border border-ghost-border rounded-2xl p-8">
-              <div className="text-ghost-muted font-medium mb-2">Agency</div>
-              <div className="text-4xl font-bold text-white mb-1">$499<span className="text-lg text-ghost-muted">/mo</span></div>
-              <p className="text-ghost-muted text-sm mb-6">Multi-location & teams</p>
+              <div className="text-ghost-muted font-medium mb-2">Pro</div>
+              <div className="text-4xl font-bold text-white mb-1">$199<span className="text-lg text-ghost-muted">/mo</span></div>
+              <p className="text-ghost-muted text-sm mb-6">For high-volume teams</p>
               <ul className="space-y-3 mb-8">
                 {[
-                  'Everything in Pro',
-                  'Up to 5 locations',
-                  'Team member access',
-                  'White-label option',
+                  '2,000 SMS messages/mo',
+                  'Unlimited AI conversations',
+                  'Full AI automation',
+                  'Monthly strategy review',
+                  '5 phone numbers',
+                  'Unlimited contacts',
                   'API access',
                   'Priority support'
                 ].map((f, i) => (
@@ -709,14 +714,22 @@ export default function LandingPage() {
                 ))}
               </ul>
               <button
-                onClick={() => handleCheckout('agency')}
-                disabled={loading === 'agency'}
+                onClick={() => handleCheckout('pro')}
+                disabled={loading === 'pro'}
                 className="w-full border border-ghost-border text-white py-4 min-h-[52px] rounded-full font-medium hover:bg-ghost-border transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {loading === 'agency' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+                {loading === 'pro' ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
                 Start Free Trial
               </button>
             </div>
+          </div>
+
+          {/* Enterprise CTA */}
+          <div className="mt-12 text-center">
+            <p className="text-ghost-muted mb-3">Need multi-location, white-label, or custom integrations?</p>
+            <a href="mailto:enterprise@ghostops.ai" className="text-emerald-400 hover:text-emerald-300 font-medium transition">
+              Contact us for Enterprise pricing →
+            </a>
           </div>
         </div>
       </section>
@@ -832,7 +845,12 @@ export default function LandingPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="flex-1 bg-ghost-card border border-ghost-border rounded-full px-5 sm:px-6 py-4 min-h-[52px] text-white placeholder-ghost-muted focus:outline-none focus:border-emerald-600"
             />
-            <button className="bg-emerald-600 text-white px-6 sm:px-8 py-4 min-h-[52px] rounded-full font-semibold hover:bg-emerald-500 transition whitespace-nowrap">
+            <button
+              onClick={() => handleCheckout('growth')}
+              disabled={!!loading}
+              className="bg-emerald-600 text-white px-6 sm:px-8 py-4 min-h-[52px] rounded-full font-semibold hover:bg-emerald-500 transition whitespace-nowrap disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
               Get Started
             </button>
           </div>
@@ -853,9 +871,9 @@ export default function LandingPage() {
             </div>
 
             <div className="flex gap-6 sm:gap-8 text-ghost-muted">
-              <a href="#" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Privacy</a>
-              <a href="#" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Terms</a>
-              <a href="#" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Contact</a>
+              <a href="/privacy" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Privacy</a>
+              <a href="/terms" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Terms</a>
+              <a href="mailto:support@ghostops.ai" className="hover:text-white transition py-2 min-h-[44px] flex items-center">Contact</a>
             </div>
 
             <div className="text-ghost-muted text-sm">

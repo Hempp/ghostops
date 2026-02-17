@@ -416,10 +416,16 @@ export default function SettingsPanel({ businessId }: SettingsPanelProps) {
               Questions about GhostOps? Check our documentation or contact support.
             </p>
             <div className="flex gap-3">
-              <button className="px-4 py-2 bg-ghost-border text-white rounded-lg hover:bg-ghost-muted/20 transition-colors text-sm">
+              <button
+                onClick={() => window.open('https://docs.ghostops.ai', '_blank', 'noopener,noreferrer')}
+                className="px-4 py-2 bg-ghost-border text-white rounded-lg hover:bg-ghost-muted/20 transition-colors text-sm"
+              >
                 View Docs
               </button>
-              <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm">
+              <button
+                onClick={() => window.location.href = 'mailto:support@ghostops.ai?subject=GhostOps Support Request'}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm"
+              >
                 Contact Support
               </button>
             </div>

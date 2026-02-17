@@ -89,7 +89,7 @@ Creates Stripe checkout session for subscription.
 
 ```typescript
 // Request
-{ plan: 'starter' | 'pro' | 'agency' }
+{ plan: 'starter' | 'growth' | 'pro' }
 
 // Response
 { url: 'https://checkout.stripe.com/...' }
@@ -140,9 +140,9 @@ Generated at `/og-image.png` using Next.js ImageResponse:
 
 | Plan | Price | Features |
 |------|-------|----------|
-| Starter | $79/mo | Missed call, invoicing, 500 msgs |
-| Pro | $197/mo | + Social media, reviews, unlimited |
-| Agency | $499/mo | + 5 locations, team, API access |
+| Starter | $29/mo | 100 SMS, 50 AI convos, 1 phone number, 250 contacts |
+| Growth | $79/mo | 500 SMS, 200 AI convos, social media, 2 phone numbers |
+| Pro | $199/mo | 2,000 SMS, unlimited AI, 5 phone numbers, API access |
 
 ## Design
 

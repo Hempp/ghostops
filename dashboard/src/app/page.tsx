@@ -21,26 +21,25 @@ import { Loader2, AlertCircle } from 'lucide-react'
 
 type View = 'dashboard' | 'cofounder' | 'conversations' | 'invoices' | 'calendar' | 'settings'
 
-export default function Dashboard() {
+export default function Dashboard(): JSX.Element | null {
   const router = useRouter()
-  const { user, businessId, loading, needsOnboarding } = useAuth()
+  const { user, businessId, loading, needsOnboarding, error: authError } = useAuth()
   const [activeView, setActiveView] = useState<View>('dashboard')
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
   const [todayTaskCount, setTodayTaskCount] = useState<number | null>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-    }
-  }, [loading, user, router])
+    if (loading) return
 
-  // Redirect to onboarding if business setup is incomplete
-  useEffect(() => {
-    if (!loading && user && needsOnboarding) {
-      router.push('/onboarding')
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+
+    if (needsOnboarding) {
+      router.replace('/onboarding')
     }
   }, [loading, user, needsOnboarding, router])
 
@@ -99,7 +98,6 @@ export default function Dashboard() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Show loading state while checking auth
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-ghost-bg">
@@ -111,12 +109,28 @@ export default function Dashboard() {
     )
   }
 
-  // Don't render if not authenticated (redirect is happening)
+  if (authError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-ghost-bg">
+        <div className="flex flex-col items-center gap-4 max-w-md text-center p-6">
+          <AlertCircle className="w-12 h-12 text-red-500" />
+          <h1 className="text-xl font-serif text-white">Authentication Error</h1>
+          <p className="text-ghost-muted">{authError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-ghost-accent text-white rounded-lg hover:bg-ghost-accent/90 transition-colors"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (!user) {
     return null
   }
 
-  // Show error if user is authenticated but has no business
   if (!businessId) {
     return (
       <div className="flex h-screen items-center justify-center bg-ghost-bg">

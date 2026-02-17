@@ -1,30 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Lightbulb,
   TrendingUp,
-  TrendingDown,
   Users,
   DollarSign,
   Clock,
   Target,
   AlertTriangle,
   Star,
-  ChevronRight,
   RefreshCw,
-  Filter,
   Bookmark,
   BookmarkCheck,
   ThumbsUp,
   ThumbsDown,
   Sparkles,
   BarChart3,
-  PieChart,
   Activity,
-  Zap
+  Zap,
+  AlertCircle,
+  X
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
 interface Insight {
   id: string
@@ -50,115 +49,168 @@ interface InsightsPanelProps {
   businessId: string
 }
 
-// Mock data generator
-const generateInsights = (): Insight[] => {
+// Fetch insights from the backend API
+async function fetchInsights(businessId: string): Promise<Insight[]> {
+  try {
+    // Get session for auth
+    const { data: sessionData } = await supabase.auth.getSession()
+    const accessToken = sessionData?.session?.access_token
+
+    const response = await fetch(`/api/cofounder/insights?businessId=${businessId}`, {
+      headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch insights')
+    }
+
+    const data = await response.json()
+
+    // Transform API opportunities to Insight format
+    const insights: Insight[] = []
+
+    // Add opportunities
+    if (data.opportunities && Array.isArray(data.opportunities)) {
+      data.opportunities.forEach((opp: {
+        id?: string
+        type?: string
+        title: string
+        description: string
+        potentialRevenue?: number
+        likelihood?: number
+        suggestedAction?: string
+      }, index: number) => {
+        insights.push({
+          id: opp.id || `opp-${index}`,
+          type: 'opportunity',
+          category: 'revenue',
+          title: opp.title,
+          summary: opp.description,
+          details: opp.description,
+          impact: opp.potentialRevenue && opp.potentialRevenue > 1000 ? 'high' : 'medium',
+          confidence: opp.likelihood || 75,
+          actionable: true,
+          suggestedAction: opp.suggestedAction,
+          generatedAt: new Date(),
+          saved: false,
+          metrics: opp.potentialRevenue ? [
+            { label: 'Potential Revenue', value: `$${opp.potentialRevenue.toLocaleString()}` },
+            { label: 'Likelihood', value: `${opp.likelihood || 75}%` }
+          ] : undefined
+        })
+      })
+    }
+
+    // Add seasonal insights
+    if (data.seasonalInsights && Array.isArray(data.seasonalInsights)) {
+      data.seasonalInsights.forEach((seasonal: {
+        id?: string
+        insight: string
+        recommendation?: string
+      }, index: number) => {
+        insights.push({
+          id: seasonal.id || `seasonal-${index}`,
+          type: 'trend',
+          category: 'marketing',
+          title: 'Seasonal Insight',
+          summary: seasonal.insight,
+          details: seasonal.insight,
+          impact: 'medium',
+          confidence: 85,
+          actionable: !!seasonal.recommendation,
+          suggestedAction: seasonal.recommendation,
+          generatedAt: new Date(),
+          saved: false
+        })
+      })
+    }
+
+    // Add goal progress as insights
+    if (data.goalProgress && Array.isArray(data.goalProgress)) {
+      data.goalProgress.forEach((goal: {
+        id?: string
+        name: string
+        current: number
+        target: number
+        percentage: number
+        status: string
+      }, index: number) => {
+        if (goal.status === 'behind') {
+          insights.push({
+            id: goal.id || `goal-${index}`,
+            type: 'alert',
+            category: 'operations',
+            title: `Goal Behind: ${goal.name}`,
+            summary: `Currently at ${goal.percentage}% of target (${goal.current}/${goal.target})`,
+            details: `This goal is behind schedule. Consider adjusting strategy or timeline.`,
+            impact: 'high',
+            confidence: 100,
+            actionable: true,
+            suggestedAction: 'Review goal strategy and identify blockers',
+            generatedAt: new Date(),
+            saved: false,
+            metrics: [
+              { label: 'Current', value: goal.current.toString() },
+              { label: 'Target', value: goal.target.toString() },
+              { label: 'Progress', value: `${goal.percentage}%` }
+            ]
+          })
+        }
+      })
+    }
+
+    return insights
+  } catch (error) {
+    console.error('Error fetching insights:', error)
+    return []
+  }
+}
+
+// Fallback data for when API fails or Supabase not configured
+const generateFallbackInsights = (): Insight[] => {
   const now = new Date()
   return [
     {
       id: '1',
       type: 'opportunity',
       category: 'revenue',
-      title: 'Upsell window detected for 8 customers',
-      summary: '8 customers have been highly engaged for 3+ months and have never purchased premium services.',
-      details: 'Based on purchase history and engagement patterns, these customers have a 73% likelihood of converting to premium if approached with a personalized offer. Combined potential revenue: $4,200.',
+      title: 'Upsell window detected for customers',
+      summary: 'Highly engaged customers may be ready for premium services.',
+      details: 'Based on engagement patterns, some customers show high conversion likelihood.',
       impact: 'high',
       confidence: 87,
       actionable: true,
-      suggestedAction: 'Send personalized upgrade offers with 15% first-month discount',
+      suggestedAction: 'Send personalized upgrade offers',
       generatedAt: new Date(now.getTime() - 2 * 3600000),
       saved: false,
-      metrics: [
-        { label: 'Potential Revenue', value: '$4,200' },
-        { label: 'Conversion Likelihood', value: '73%', change: 12 }
-      ]
     },
     {
       id: '2',
       type: 'trend',
       category: 'customers',
-      title: 'Response time correlates with conversion',
-      summary: 'Leads contacted within 5 minutes have 3x higher conversion rate.',
-      details: 'Analysis of your last 200 leads shows a clear correlation: responses under 5 minutes have 45% conversion, 5-30 minutes have 22% conversion, and over 30 minutes have only 15% conversion.',
+      title: 'Response time impacts conversion',
+      summary: 'Faster responses correlate with higher conversion rates.',
+      details: 'Quick response times significantly improve lead conversion.',
       impact: 'high',
       confidence: 94,
       actionable: true,
-      suggestedAction: 'Enable instant AI responses for all new leads during business hours',
+      suggestedAction: 'Enable instant AI responses for leads',
       generatedAt: new Date(now.getTime() - 6 * 3600000),
-      saved: true,
-      metrics: [
-        { label: '< 5 min conversion', value: '45%' },
-        { label: '5-30 min conversion', value: '22%' },
-        { label: '> 30 min conversion', value: '15%' }
-      ]
+      saved: false,
     },
     {
       id: '3',
       type: 'alert',
       category: 'operations',
       title: 'Invoice aging increasing',
-      summary: 'Average days to payment has increased from 12 to 18 days over the past month.',
-      details: 'This 50% increase in payment time is impacting cash flow. Three specific customers account for 60% of the delay. Consider implementing earlier reminder sequences or offering early payment incentives.',
+      summary: 'Average payment time has increased recently.',
+      details: 'Consider implementing earlier reminder sequences.',
       impact: 'medium',
       confidence: 100,
       actionable: true,
-      suggestedAction: 'Enable automatic payment reminders at 7, 14, and 21 days',
+      suggestedAction: 'Enable automatic payment reminders',
       generatedAt: new Date(now.getTime() - 12 * 3600000),
       saved: false,
-      metrics: [
-        { label: 'Current Avg', value: '18 days', change: -50 },
-        { label: 'Outstanding', value: '$8,450' }
-      ]
-    },
-    {
-      id: '4',
-      type: 'optimization',
-      category: 'marketing',
-      title: 'Best performing content identified',
-      summary: 'Educational content generates 4x more engagement than promotional content.',
-      details: 'Posts about tips, how-tos, and industry insights receive significantly more engagement than service promotions. Consider shifting content mix to 70% educational, 30% promotional.',
-      impact: 'medium',
-      confidence: 91,
-      actionable: true,
-      suggestedAction: 'Create content calendar with 70/30 educational to promotional ratio',
-      generatedAt: new Date(now.getTime() - 24 * 3600000),
-      saved: false,
-      metrics: [
-        { label: 'Educational Engagement', value: '+340%' },
-        { label: 'Best Post Type', value: 'How-to guides' }
-      ]
-    },
-    {
-      id: '5',
-      type: 'benchmark',
-      category: 'competitive',
-      title: 'Your pricing is 15% below market average',
-      summary: 'Industry analysis shows competitors charge 15-20% more for similar services.',
-      details: 'Based on analysis of 12 competitors in your area, your pricing is below market. Given your 4.8-star average review rating, there\'s room to increase prices without impacting demand.',
-      impact: 'high',
-      confidence: 78,
-      actionable: true,
-      suggestedAction: 'Test 10% price increase on new customers for one month',
-      generatedAt: new Date(now.getTime() - 48 * 3600000),
-      saved: true,
-      metrics: [
-        { label: 'Your Price', value: '$85/hr' },
-        { label: 'Market Average', value: '$100/hr' },
-        { label: 'Your Rating', value: '4.8 stars' }
-      ]
-    },
-    {
-      id: '6',
-      type: 'trend',
-      category: 'customers',
-      title: 'Peak inquiry hours identified',
-      summary: 'Most inquiries come between 6-8 PM, but response is slower during these hours.',
-      details: '42% of all inquiries arrive between 6-8 PM, but your average response time during this window is 3x longer than during business hours. This is a key conversion opportunity.',
-      impact: 'medium',
-      confidence: 96,
-      actionable: true,
-      suggestedAction: 'Enable AI auto-response for evening inquiries with next-day callback promise',
-      generatedAt: new Date(now.getTime() - 72 * 3600000),
-      saved: false
     }
   ]
 }
@@ -209,13 +261,15 @@ function InsightCard({
   expanded,
   onToggle,
   onSave,
-  onFeedback
+  onFeedback,
+  index
 }: {
   insight: Insight
   expanded: boolean
   onToggle: () => void
   onSave: () => void
   onFeedback: (helpful: boolean) => void
+  index: number
 }) {
   const typeConfig = getTypeConfig(insight.type)
   const impactBadge = getImpactBadge(insight.impact)
@@ -224,31 +278,40 @@ function InsightCard({
   const CategoryIcon = categoryConfig.icon
 
   return (
-    <div className={`border ${expanded ? 'border-emerald-500/30' : 'border-ghost-border'} bg-ghost-card rounded-xl overflow-hidden transition-all`}>
+    <div
+      className={`group card-refined border backdrop-blur-sm rounded-xl overflow-hidden transition-all duration-300
+        ${expanded
+          ? 'border-emerald-500/30 ring-1 ring-emerald-500/20 shadow-[0_4px_20px_rgba(16,185,129,0.1)]'
+          : 'border-ghost-border hover:border-ghost-border-subtle'}
+        animate-fade-in-up`}
+      style={{ animationDelay: `${index * 50}ms` }}
+    >
       <div
-        className="p-4 cursor-pointer hover:bg-ghost-card/80 transition-colors"
+        className="p-4 cursor-pointer hover:bg-ghost-card/60 transition-all duration-200"
         onClick={onToggle}
       >
         <div className="flex items-start gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${typeConfig.bg}`}>
-            <Icon className={`w-5 h-5 ${typeConfig.text}`} />
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${typeConfig.bg}
+            transition-all duration-300 group-hover:scale-105`}>
+            <Icon className={`w-5 h-5 ${typeConfig.text} drop-shadow-sm`} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h4 className="text-sm font-medium text-white">{insight.title}</h4>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full ${impactBadge.bg} ${impactBadge.text}`}>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <h4 className="text-sm font-semibold text-white">{insight.title}</h4>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${impactBadge.bg} ${impactBadge.text}
+                ring-1 ring-current/20 uppercase tracking-wider`}>
                 {impactBadge.label}
               </span>
             </div>
-            <p className="text-sm text-ghost-muted line-clamp-2">{insight.summary}</p>
-            <div className="flex items-center gap-3 mt-2">
-              <div className="flex items-center gap-1 text-xs text-ghost-muted">
-                <CategoryIcon className="w-3 h-3" />
+            <p className="text-sm text-ghost-muted line-clamp-2 leading-relaxed">{insight.summary}</p>
+            <div className="flex items-center gap-3 mt-2.5">
+              <div className="flex items-center gap-1.5 text-xs text-ghost-muted">
+                <CategoryIcon className="w-3.5 h-3.5" />
                 {categoryConfig.label}
               </div>
-              <div className="flex items-center gap-1 text-xs text-ghost-muted">
-                <Sparkles className="w-3 h-3" />
-                {insight.confidence}% confidence
+              <div className="flex items-center gap-1.5 text-xs text-ghost-muted">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500/60" />
+                <span className="tabular-nums">{insight.confidence}%</span> confidence
               </div>
             </div>
           </div>
@@ -257,12 +320,12 @@ function InsightCard({
               e.stopPropagation()
               onSave()
             }}
-            className="p-2 hover:bg-ghost-border rounded-lg transition-colors"
+            className="p-2 hover:bg-ghost-border/50 rounded-lg transition-all duration-200 hover:scale-110"
           >
             {insight.saved ? (
-              <BookmarkCheck className="w-4 h-4 text-emerald-400" />
+              <BookmarkCheck className="w-5 h-5 text-emerald-400 drop-shadow-sm" />
             ) : (
-              <Bookmark className="w-4 h-4 text-ghost-muted" />
+              <Bookmark className="w-5 h-5 text-ghost-muted" />
             )}
           </button>
         </div>
@@ -354,29 +417,96 @@ function InsightsSkeleton() {
   )
 }
 
+function ErrorBanner({
+  error,
+  isUsingFallback,
+  onRetry,
+  onDismiss
+}: {
+  error: string | null
+  isUsingFallback: boolean
+  onRetry: () => void
+  onDismiss: () => void
+}) {
+  if (!error && !isUsingFallback) return null
+
+  const isError = !!error
+  const bgColor = isError ? 'bg-red-500/10' : 'bg-amber-500/10'
+  const borderColor = isError ? 'border-red-500/30' : 'border-amber-500/30'
+  const textColor = isError ? 'text-red-400' : 'text-amber-400'
+  const Icon = isError ? AlertCircle : AlertTriangle
+
+  return (
+    <div className={`mb-4 p-3 rounded-lg border ${bgColor} ${borderColor}`}>
+      <div className="flex items-start gap-3">
+        <Icon className={`w-5 h-5 ${textColor} flex-shrink-0 mt-0.5`} />
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium ${textColor}`}>
+            {isError ? 'Error Loading Data' : 'Showing Demo Data'}
+          </p>
+          <p className="text-xs text-ghost-muted mt-0.5">
+            {error || 'Unable to connect to backend. Displaying sample insights.'}
+          </p>
+          <button
+            onClick={onRetry}
+            className={`mt-2 text-xs font-medium ${textColor} hover:underline`}
+          >
+            Try again
+          </button>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="p-1 hover:bg-ghost-card rounded transition-colors text-ghost-muted hover:text-white"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function InsightsPanel({ businessId }: InsightsPanelProps) {
   const [insights, setInsights] = useState<Insight[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'saved' | Insight['type']>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [isUsingFallback, setIsUsingFallback] = useState(false)
+  const [errorDismissed, setErrorDismissed] = useState(false)
 
-  useEffect(() => {
-    loadInsights()
-  }, [businessId])
-
-  const loadInsights = async () => {
+  const loadInsights = useCallback(async () => {
     setLoading(true)
+    setError(null)
+    setIsUsingFallback(false)
+    setErrorDismissed(false)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const data = generateInsights()
-      setInsights(data)
-    } catch (error) {
-      console.error('Error loading insights:', error)
+      // Fetch real data from backend if Supabase is configured
+      if (isSupabaseConfigured) {
+        const realInsights = await fetchInsights(businessId)
+        if (realInsights.length > 0) {
+          setInsights(realInsights)
+          return
+        }
+      }
+      // Fall back to demo data if API returns empty or Supabase not configured
+      const fallbackData = generateFallbackInsights()
+      setInsights(fallbackData)
+      setIsUsingFallback(true)
+    } catch (err) {
+      console.error('Error loading insights:', err)
+      setError('Failed to load insights. Showing demo data.')
+      // Use fallback data on error
+      setInsights(generateFallbackInsights())
+      setIsUsingFallback(true)
     } finally {
       setLoading(false)
     }
-  }
+  }, [businessId])
+
+  useEffect(() => {
+    loadInsights()
+  }, [loadInsights])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -438,39 +568,59 @@ export default function InsightsPanel({ businessId }: InsightsPanelProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Lightbulb className="w-5 h-5 text-amber-400" />
+      <div className="mb-5 animate-fade-in">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xl font-display font-bold text-white flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500/20 to-orange-500/10 rounded-xl
+              flex items-center justify-center ring-1 ring-amber-500/20">
+              <Lightbulb className="w-5 h-5 text-amber-400 drop-shadow-sm" />
+            </div>
             AI-Generated Insights
           </h3>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 hover:bg-ghost-card rounded-lg transition-colors text-ghost-muted hover:text-white"
+            className="p-2.5 hover:bg-ghost-card rounded-xl transition-all duration-200
+              text-ghost-muted hover:text-white hover:scale-105 active:scale-95"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
         <p className="text-sm text-ghost-muted">
-          {insights.length} insights based on your business data
+          <span className="text-emerald-400 font-semibold tabular-nums">{insights.length}</span> insights based on your business data
         </p>
       </div>
 
+      {/* Error/Fallback Banner */}
+      {!errorDismissed && (
+        <ErrorBanner
+          error={error}
+          isUsingFallback={isUsingFallback}
+          onRetry={handleRefresh}
+          onDismiss={() => setErrorDismissed(true)}
+        />
+      )}
+
       {/* Filters */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-1 px-1">
-        {filterOptions.map(option => (
+      <div className="flex gap-2 mb-5 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+        {filterOptions.map((option, index) => (
           <button
             key={option.value}
             onClick={() => setFilter(option.value)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap
+              transition-all duration-200 animate-fade-in-up ${
               filter === option.value
-                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
-                : 'bg-ghost-card text-ghost-muted hover:text-white border border-ghost-border'
+                ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
+                : 'bg-ghost-card/60 text-ghost-muted hover:text-white border border-ghost-border/60 hover:border-ghost-border hover:bg-ghost-card'
             }`}
+            style={{ animationDelay: `${index * 30}ms` }}
           >
             {option.label}
-            <span className="text-xs opacity-60">({insightCounts[option.value]})</span>
+            <span className={`text-xs tabular-nums px-1.5 py-0.5 rounded-full ${
+              filter === option.value ? 'bg-emerald-500/20' : 'bg-ghost-border/50'
+            }`}>
+              {insightCounts[option.value]}
+            </span>
           </button>
         ))}
       </div>
@@ -479,19 +629,20 @@ export default function InsightsPanel({ businessId }: InsightsPanelProps) {
       <div className="flex-1 overflow-y-auto space-y-3">
         {filteredInsights.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 bg-ghost-card rounded-full flex items-center justify-center mb-3">
-              <Lightbulb className="w-6 h-6 text-ghost-muted" />
+            <div className="w-14 h-14 bg-ghost-card/80 rounded-2xl flex items-center justify-center mb-4">
+              <Lightbulb className="w-7 h-7 text-ghost-muted" />
             </div>
-            <p className="text-ghost-muted">No insights in this category</p>
+            <p className="text-ghost-muted font-medium">No insights in this category</p>
             <button
               onClick={() => setFilter('all')}
-              className="mt-3 text-sm text-emerald-400 hover:text-emerald-300"
+              className="mt-4 px-4 py-2 text-sm font-medium text-emerald-400 hover:text-emerald-300
+                bg-emerald-500/10 hover:bg-emerald-500/15 rounded-lg transition-all duration-200"
             >
               View all insights
             </button>
           </div>
         ) : (
-          filteredInsights.map(insight => (
+          filteredInsights.map((insight, index) => (
             <InsightCard
               key={insight.id}
               insight={insight}
@@ -499,6 +650,7 @@ export default function InsightsPanel({ businessId }: InsightsPanelProps) {
               onToggle={() => setExpandedId(expandedId === insight.id ? null : insight.id)}
               onSave={() => handleSave(insight.id)}
               onFeedback={(helpful) => handleFeedback(insight.id, helpful)}
+              index={index}
             />
           ))
         )}

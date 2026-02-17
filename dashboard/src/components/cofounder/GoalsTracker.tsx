@@ -1,29 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Target,
   Plus,
   Edit2,
   Trash2,
-  Check,
   X,
   TrendingUp,
   TrendingDown,
-  Calendar,
   DollarSign,
   Users,
-  MessageSquare,
-  Star,
   Clock,
-  Award,
-  ChevronRight,
   RefreshCw,
   AlertCircle,
   CheckCircle,
-  Circle
+  Circle,
+  AlertTriangle
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/Skeleton'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
 interface Goal {
   id: string
@@ -50,17 +46,103 @@ interface GoalsTrackerProps {
   businessId: string
 }
 
-// Mock data generator
-const generateGoals = (): Goal[] => {
+// Map metric_type from API to category
+const mapMetricTypeToCategory = (metricType: string): Goal['category'] => {
+  const map: Record<string, Goal['category']> = {
+    revenue: 'revenue',
+    leads: 'customers',
+    messages: 'operations',
+    custom: 'growth'
+  }
+  return map[metricType] || 'growth'
+}
+
+// Map unit to type
+const mapUnitToType = (unit: string): Goal['type'] => {
+  if (unit === '$' || unit.toLowerCase() === 'dollars') return 'currency'
+  if (unit === '%' || unit.toLowerCase() === 'percent') return 'percentage'
+  if (unit.toLowerCase().includes('second') || unit.toLowerCase().includes('minute')) return 'time'
+  return 'number'
+}
+
+// Calculate status based on progress and deadline
+const calculateStatus = (current: number, target: number, deadline: Date | null): Goal['status'] => {
+  const progress = target > 0 ? (current / target) * 100 : 0
+
+  if (progress >= 100) return 'completed'
+
+  if (!deadline) {
+    return progress >= 50 ? 'on_track' : 'at_risk'
+  }
+
+  const now = new Date()
+  const totalTime = deadline.getTime() - (now.getTime() - 30 * 24 * 60 * 60 * 1000) // Assume 30-day goal
+  const elapsedTime = now.getTime() - (deadline.getTime() - totalTime)
+  const expectedProgress = (elapsedTime / totalTime) * 100
+
+  if (progress >= expectedProgress * 0.9) return 'on_track'
+  if (progress >= expectedProgress * 0.7) return 'at_risk'
+  return 'behind'
+}
+
+// Fetch goals from backend API
+async function fetchGoals(businessId: string): Promise<Goal[]> {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const accessToken = sessionData?.session?.access_token
+
+    const response = await fetch(`/api/cofounder/goals?businessId=${businessId}`, {
+      headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch goals')
+    }
+
+    const data = await response.json()
+    const apiGoals = data.goals || []
+
+    // Transform API response to Goal format
+    return apiGoals.map((goal: {
+      id: string
+      name: string
+      description?: string
+      metric_type: string
+      target_value: number
+      current_value: number
+      unit?: string
+      deadline?: string
+      created_at: string
+    }) => ({
+      id: goal.id,
+      name: goal.name,
+      description: goal.description || '',
+      category: mapMetricTypeToCategory(goal.metric_type),
+      type: mapUnitToType(goal.unit || ''),
+      currentValue: goal.current_value,
+      targetValue: goal.target_value,
+      startValue: 0,
+      unit: goal.unit,
+      deadline: goal.deadline ? new Date(goal.deadline) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      createdAt: new Date(goal.created_at),
+      status: calculateStatus(goal.current_value, goal.target_value, goal.deadline ? new Date(goal.deadline) : null)
+    }))
+  } catch (error) {
+    console.error('Error fetching goals:', error)
+    return []
+  }
+}
+
+// Fallback data for when API fails or Supabase not configured
+const generateFallbackGoals = (): Goal[] => {
   const now = new Date()
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  const endOfQuarter = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 3, 0)
 
   return [
     {
       id: '1',
       name: 'Monthly Revenue',
-      description: 'Total revenue for February 2026',
+      description: 'Total revenue for this month',
       category: 'revenue',
       type: 'currency',
       currentValue: 18500,
@@ -69,12 +151,6 @@ const generateGoals = (): Goal[] => {
       deadline: endOfMonth,
       createdAt: new Date(now.getFullYear(), now.getMonth(), 1),
       status: 'on_track',
-      milestones: [
-        { id: 'm1', label: 'Week 1', value: 6250, reached: true },
-        { id: 'm2', label: 'Week 2', value: 12500, reached: true },
-        { id: 'm3', label: 'Week 3', value: 18750, reached: false },
-        { id: 'm4', label: 'Week 4', value: 25000, reached: false }
-      ]
     },
     {
       id: '2',
@@ -91,61 +167,16 @@ const generateGoals = (): Goal[] => {
     },
     {
       id: '3',
-      name: 'Response Time',
-      description: 'Average first response time to inquiries',
+      name: 'Response Rate',
+      description: 'Percentage of messages responded to within 1 hour',
       category: 'operations',
-      type: 'time',
-      currentValue: 47,
-      targetValue: 60,
-      startValue: 120,
-      unit: 'seconds',
+      type: 'percentage',
+      currentValue: 85,
+      targetValue: 90,
+      startValue: 70,
       deadline: endOfMonth,
       createdAt: new Date(now.getFullYear(), now.getMonth(), 1),
-      status: 'completed'
-    },
-    {
-      id: '4',
-      name: 'Customer Retention',
-      description: 'Percentage of customers who return',
-      category: 'customers',
-      type: 'percentage',
-      currentValue: 78,
-      targetValue: 85,
-      startValue: 70,
-      deadline: endOfQuarter,
-      createdAt: new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1),
       status: 'on_track'
-    },
-    {
-      id: '5',
-      name: 'Quarterly Revenue',
-      description: 'Q1 2026 total revenue',
-      category: 'revenue',
-      type: 'currency',
-      currentValue: 52000,
-      targetValue: 75000,
-      startValue: 0,
-      deadline: endOfQuarter,
-      createdAt: new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1),
-      status: 'on_track',
-      milestones: [
-        { id: 'q1', label: 'Month 1', value: 25000, reached: true },
-        { id: 'q2', label: 'Month 2', value: 50000, reached: true },
-        { id: 'q3', label: 'Month 3', value: 75000, reached: false }
-      ]
-    },
-    {
-      id: '6',
-      name: 'Lead Conversion Rate',
-      description: 'Percentage of leads that become customers',
-      category: 'growth',
-      type: 'percentage',
-      currentValue: 18,
-      targetValue: 25,
-      startValue: 15,
-      deadline: endOfQuarter,
-      createdAt: new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1),
-      status: 'behind'
     }
   ]
 }
@@ -193,11 +224,15 @@ const calculateProgress = (goal: Goal): number => {
   // For "time" goals where lower is better
   if (goal.type === 'time') {
     const totalReduction = goal.startValue - goal.targetValue
+    // Guard against division by zero
+    if (totalReduction === 0) return goal.currentValue <= goal.targetValue ? 100 : 0
     const currentReduction = goal.startValue - goal.currentValue
     return Math.min(100, Math.max(0, (currentReduction / totalReduction) * 100))
   }
   // For other goals where higher is better
   const range = goal.targetValue - goal.startValue
+  // Guard against division by zero
+  if (range === 0) return goal.currentValue >= goal.targetValue ? 100 : 0
   const progress = goal.currentValue - goal.startValue
   return Math.min(100, Math.max(0, (progress / range) * 100))
 }
@@ -538,29 +573,96 @@ function AddGoalModal({
   )
 }
 
+function ErrorBanner({
+  error,
+  isUsingFallback,
+  onRetry,
+  onDismiss
+}: {
+  error: string | null
+  isUsingFallback: boolean
+  onRetry: () => void
+  onDismiss: () => void
+}) {
+  if (!error && !isUsingFallback) return null
+
+  const isError = !!error
+  const bgColor = isError ? 'bg-red-500/10' : 'bg-amber-500/10'
+  const borderColor = isError ? 'border-red-500/30' : 'border-amber-500/30'
+  const textColor = isError ? 'text-red-400' : 'text-amber-400'
+  const Icon = isError ? AlertCircle : AlertTriangle
+
+  return (
+    <div className={`mb-4 p-3 rounded-lg border ${bgColor} ${borderColor}`}>
+      <div className="flex items-start gap-3">
+        <Icon className={`w-5 h-5 ${textColor} flex-shrink-0 mt-0.5`} />
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium ${textColor}`}>
+            {isError ? 'Error Loading Data' : 'Showing Demo Data'}
+          </p>
+          <p className="text-xs text-ghost-muted mt-0.5">
+            {error || 'Unable to connect to backend. Displaying sample goals.'}
+          </p>
+          <button
+            onClick={onRetry}
+            className={`mt-2 text-xs font-medium ${textColor} hover:underline`}
+          >
+            Try again
+          </button>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="p-1 hover:bg-ghost-card rounded transition-colors text-ghost-muted hover:text-white"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function GoalsTracker({ businessId }: GoalsTrackerProps) {
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<'all' | Goal['category'] | Goal['status']>('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isUsingFallback, setIsUsingFallback] = useState(false)
+  const [errorDismissed, setErrorDismissed] = useState(false)
 
-  useEffect(() => {
-    loadGoals()
-  }, [businessId])
-
-  const loadGoals = async () => {
+  const loadGoals = useCallback(async () => {
     setLoading(true)
+    setError(null)
+    setIsUsingFallback(false)
+    setErrorDismissed(false)
     try {
-      await new Promise(resolve => setTimeout(resolve, 800))
-      const data = generateGoals()
-      setGoals(data)
-    } catch (error) {
-      console.error('Error loading goals:', error)
+      // Fetch real data from backend if Supabase is configured
+      if (isSupabaseConfigured) {
+        const realGoals = await fetchGoals(businessId)
+        if (realGoals.length > 0) {
+          setGoals(realGoals)
+          return
+        }
+      }
+      // Fall back to demo data if API returns empty or Supabase not configured
+      const fallbackData = generateFallbackGoals()
+      setGoals(fallbackData)
+      setIsUsingFallback(true)
+    } catch (err) {
+      console.error('Error loading goals:', err)
+      setError('Failed to load goals. Showing demo data.')
+      // Use fallback data on error
+      setGoals(generateFallbackGoals())
+      setIsUsingFallback(true)
     } finally {
       setLoading(false)
     }
-  }
+  }, [businessId])
+
+  useEffect(() => {
+    loadGoals()
+  }, [loadGoals])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -568,22 +670,92 @@ export default function GoalsTracker({ businessId }: GoalsTrackerProps) {
     setRefreshing(false)
   }
 
-  const handleAddGoal = (goalData: Omit<Goal, 'id' | 'createdAt' | 'status'>) => {
-    const newGoal: Goal = {
-      ...goalData,
-      id: `goal-${Date.now()}`,
-      createdAt: new Date(),
-      status: 'on_track'
+  const handleAddGoal = async (goalData: Omit<Goal, 'id' | 'createdAt' | 'status'>) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+
+      // Map category back to metric_type
+      const metricTypeMap: Record<Goal['category'], string> = {
+        revenue: 'revenue',
+        customers: 'leads',
+        operations: 'messages',
+        growth: 'custom'
+      }
+
+      // Map type to unit
+      const unitMap: Record<Goal['type'], string> = {
+        currency: '$',
+        percentage: '%',
+        number: '',
+        time: 'seconds'
+      }
+
+      const response = await fetch('/api/cofounder/goals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({
+          businessId,
+          name: goalData.name,
+          description: goalData.description,
+          metricType: metricTypeMap[goalData.category],
+          targetValue: goalData.targetValue,
+          unit: goalData.unit || unitMap[goalData.type],
+          deadline: goalData.deadline.toISOString()
+        })
+      })
+
+      if (response.ok) {
+        // Refresh goals from backend
+        await loadGoals()
+      } else {
+        // Fallback: add locally if API fails
+        const newGoal: Goal = {
+          ...goalData,
+          id: `goal-${Date.now()}`,
+          createdAt: new Date(),
+          status: 'on_track'
+        }
+        setGoals(prev => [newGoal, ...prev])
+      }
+    } catch (error) {
+      console.error('Error creating goal:', error)
+      // Fallback: add locally
+      const newGoal: Goal = {
+        ...goalData,
+        id: `goal-${Date.now()}`,
+        createdAt: new Date(),
+        status: 'on_track'
+      }
+      setGoals(prev => [newGoal, ...prev])
     }
-    setGoals(prev => [newGoal, ...prev])
   }
 
   const handleEditGoal = (id: string) => {
     console.log('Edit goal:', id)
   }
 
-  const handleDeleteGoal = (id: string) => {
-    setGoals(prev => prev.filter(g => g.id !== id))
+  const handleDeleteGoal = async (id: string) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const accessToken = sessionData?.session?.access_token
+
+      const response = await fetch(`/api/cofounder/goals?goalId=${id}&businessId=${businessId}`, {
+        method: 'DELETE',
+        headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
+      })
+
+      if (response.ok) {
+        setGoals(prev => prev.filter(g => g.id !== id))
+      }
+    } catch (error) {
+      console.error('Error deleting goal:', error)
+      // Still remove locally even if API fails
+      setGoals(prev => prev.filter(g => g.id !== id))
+    }
   }
 
   const filteredGoals = goals.filter(goal => {
@@ -665,6 +837,16 @@ export default function GoalsTracker({ businessId }: GoalsTrackerProps) {
           <div className="text-xs text-ghost-muted">Needs Attention</div>
         </div>
       </div>
+
+      {/* Error/Fallback Banner */}
+      {!errorDismissed && (
+        <ErrorBanner
+          error={error}
+          isUsingFallback={isUsingFallback}
+          onRetry={handleRefresh}
+          onDismiss={() => setErrorDismissed(true)}
+        />
+      )}
 
       {/* Filters */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2 -mx-1 px-1">

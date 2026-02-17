@@ -77,25 +77,40 @@ interface WeeklyStrategyReport {
   createdAt: string
 }
 
-// Verify cron secret
-function verifyCronSecret(request: NextRequest): boolean {
+// Verify cron request from Vercel
+function verifyCronRequest(request: NextRequest): boolean {
+  // Method 1: Check for Vercel cron signature header (set automatically by Vercel)
+  const vercelCronSignature = request.headers.get('x-vercel-cron-signature')
+  if (vercelCronSignature) {
+    // Vercel sends this header for cron requests - presence indicates valid cron call
+    return true
+  }
+
+  // Method 2: Check for CRON_SECRET in Authorization header (for manual/testing)
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
 
-  if (!cronSecret) {
-    console.warn('CRON_SECRET not configured')
-    return false
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    return true
   }
 
-  return authHeader === `Bearer ${cronSecret}`
+  // Method 3: Check for CRON_SECRET as query parameter (fallback)
+  const url = new URL(request.url)
+  const secretParam = url.searchParams.get('secret')
+  if (cronSecret && secretParam === cronSecret) {
+    return true
+  }
+
+  console.warn('CRON request verification failed: no valid signature or secret')
+  return false
 }
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
   console.log('[CRON] Weekly strategy started at', new Date().toISOString())
 
-  // Verify this is called by Vercel cron
-  if (!verifyCronSecret(request)) {
+  // Verify this is called by Vercel cron or authorized request
+  if (!verifyCronRequest(request)) {
     console.error('[CRON] Unauthorized cron request')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

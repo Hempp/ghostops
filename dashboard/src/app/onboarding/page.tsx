@@ -80,7 +80,7 @@ const SERVICE_SUGGESTIONS: Record<string, string[]> = {
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { user, businessId, loading } = useAuth()
+  const { user, businessId, loading, refreshBusinessData } = useAuth()
   const [currentStep, setCurrentStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [data, setData] = useState<OnboardingData>({
@@ -118,7 +118,7 @@ export default function OnboardingPage() {
   }
 
   const completeOnboarding = async () => {
-    if (!businessId) return
+    if (!user) return
 
     setSaving(true)
     try {
@@ -132,28 +132,76 @@ export default function OnboardingPage() {
         }
       })
 
-      // Update business record
-      const { error } = await supabase
-        .from('businesses')
-        .update({
-          name: data.businessName,
-          owner_name: data.ownerName,
-          owner_phone: data.phone,
-          business_type: data.businessType,
-          services: data.services,
-          business_hours: formattedHours,
-          brand_voice: data.brandVoice,
-          onboarding_complete: true,
-          onboarding_step: 'complete',
-          settings: {
-            ai_personality: data.aiPersonality,
-            sound_enabled: true,
-          },
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', businessId)
+      const businessData = {
+        name: data.businessName,
+        owner_name: data.ownerName,
+        owner_phone: data.phone,
+        owner_email: user.email,
+        business_type: data.businessType,
+        services: data.services,
+        business_hours: formattedHours,
+        brand_voice: data.brandVoice,
+        onboarding_complete: true,
+        onboarding_step: 'complete',
+        settings: {
+          ai_personality: data.aiPersonality,
+          sound_enabled: true,
+        },
+        updated_at: new Date().toISOString(),
+      }
 
-      if (error) throw error
+      let finalBusinessId = businessId
+
+      if (businessId) {
+        // Update existing business record
+        const { error: updateError } = await supabase
+          .from('businesses')
+          .update(businessData)
+          .eq('id', businessId)
+
+        if (updateError) throw updateError
+      } else {
+        // Create new business record
+        const { data: newBusiness, error: createError } = await supabase
+          .from('businesses')
+          .insert({
+            ...businessData,
+            created_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single()
+
+        if (createError) throw createError
+        finalBusinessId = newBusiness.id
+      }
+
+      // Ensure business_users record exists linking user to business
+      if (finalBusinessId) {
+        // Check if link already exists
+        const { data: existingLink } = await supabase
+          .from('business_users')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('business_id', finalBusinessId)
+          .single()
+
+        if (!existingLink) {
+          // Create the business_users link
+          const { error: linkError } = await supabase
+            .from('business_users')
+            .insert({
+              user_id: user.id,
+              business_id: finalBusinessId,
+              role: 'owner',
+              created_at: new Date().toISOString(),
+            })
+
+          if (linkError) throw linkError
+        }
+      }
+
+      // Refresh business data in AuthProvider to pick up the new link
+      await refreshBusinessData()
 
       // Redirect to dashboard
       router.push('/')

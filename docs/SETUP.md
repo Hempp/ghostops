@@ -112,13 +112,13 @@ After deploying landing page:
 1. Go to **Products > Add Product**
 2. Create three subscription products:
 
-| Product | Price | Price ID |
-|---------|-------|----------|
-| Starter | $79/month | Copy this |
-| Pro | $197/month | Copy this |
-| Agency | $499/month | Copy this |
+| Product | Price | Price ID Env Var |
+|---------|-------|------------------|
+| Starter | $29/month | STRIPE_STARTER_PRICE_ID |
+| Growth | $79/month | STRIPE_GROWTH_PRICE_ID |
+| Pro | $199/month | STRIPE_PRO_PRICE_ID |
 
-3. Update `landing/src/app/api/checkout/route.ts` with price IDs
+3. Copy each price ID and add to your environment variables
 
 ### Configure Webhook
 
